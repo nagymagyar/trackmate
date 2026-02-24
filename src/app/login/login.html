@@ -1,1 +1,226 @@
-<p>login works!</p>
+<!-- Theme Selector -->
+<div class="theme-selector">
+    <button (click)="toggleThemeSelector()" class="btn-theme">
+        🎨 Téma
+    </button>
+    <div *ngIf="showThemeSelector" class="theme-dropdown">
+        <div 
+            *ngFor="let theme of themes; let i = index" 
+            class="theme-option"
+            (click)="selectTheme(i)"
+        >
+            <span class="theme-color" [style.background]="theme.primaryColor"></span>
+            {{ theme.icon }} {{ theme.name }}
+        </div>
+    </div>
+</div>
+
+<div class="login-container">
+    <!-- Auth Form -->
+    <div *ngIf="showAuthForm" class="auth-card animate-slide-up">
+        <div class="auth-header">
+            <div class="logo">💰</div>
+            <h1>Költségkövető</h1>
+            <p class="auth-subtitle">
+                {{ isLoginMode ? 'Jelentkezz be a fiókodba' : 'Hozz létre egy új fiókot' }}
+            </p>
+        </div>
+
+        <form (ngSubmit)="onSubmit()" class="auth-form">
+            <div class="form-group">
+                <label for="username">Felhasználónév</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    [(ngModel)]="username" 
+                    name="username"
+                    placeholder="Add meg a felhasználóneved"
+                    autocomplete="username"
+                >
+            </div>
+
+            <div *ngIf="!isLoginMode" class="form-group">
+                <label for="email">Email (opcionális)</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    [(ngModel)]="email" 
+                    name="email"
+                    placeholder="email@example.com"
+                    autocomplete="email"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Jelszó</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    [(ngModel)]="password" 
+                    name="password"
+                    placeholder="Add meg a jelszavad"
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <div *ngIf="!isLoginMode" class="form-group">
+                <label for="confirmPassword">Jelszó megerősítése</label>
+                <input 
+                    type="password" 
+                    id="confirmPassword" 
+                    [(ngModel)]="confirmPassword" 
+                    name="confirmPassword"
+                    placeholder="Add meg újra a jelszavad"
+                    autocomplete="new-password"
+                >
+            </div>
+
+            <div *ngIf="errorMessage" class="error-message">
+                {{ errorMessage }}
+            </div>
+
+            <div *ngIf="successMessage" class="success-message">
+                {{ successMessage }}
+            </div>
+
+            <button type="submit" class="btn-primary" [disabled]="isLoading">
+                <span *ngIf="!isLoading">
+                    {{ isLoginMode ? 'Bejelentkezés' : 'Regisztráció' }}
+                </span>
+                <span *ngIf="isLoading" class="loading">
+                    <span class="spinner"></span>
+                </span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>
+                {{ isLoginMode ? 'Még nincs fiókod?' : 'Már van fiókod?' }}
+                <button (click)="toggleMode()" class="link-btn">
+                    {{ isLoginMode ? 'Regisztrálj itt' : 'Jelentkezz be' }}
+                </button>
+            </p>
+        </div>
+
+        <button (click)="goToWelcome()" class="btn-back">
+            ← Vissza
+        </button>
+    </div>
+
+    <!-- Settings (after login) -->
+    <div *ngIf="showSettings" class="settings-card animate-slide-up">
+        <div class="settings-header">
+            <h2>Beállítások</h2>
+            <button (click)="logout()" class="btn-logout-small">Kijelentkezés</button>
+        </div>
+
+        <div class="settings-section">
+            <h3>💰 Fizetés</h3>
+            <div class="form-group">
+                <label for="salary">Havi fizetés (Ft)</label>
+                <input 
+                    type="number" 
+                    id="salary" 
+                    [(ngModel)]="salary" 
+                    name="salary"
+                    placeholder="pl. 300000"
+                    min="0"
+                >
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>📉 Fix kiadások</h3>
+            <div class="quick-add">
+                <button (click)="quickAddDeduction('albérlet', 150000)" class="quick-btn">Albérlet</button>
+                <button (click)="quickAddDeduction('rezsi', 50000)" class="quick-btn">Rezsi</button>
+                <button (click)="quickAddDeduction('internet', 5000)" class="quick-btn">Internet</button>
+                <button (click)="quickAddDeduction('telefon', 8000)" class="quick-btn">Telefon</button>
+            </div>
+
+            <div class="form-row">
+                <input 
+                    type="text" 
+                    [(ngModel)]="deductionName" 
+                    placeholder="Név"
+                    class="input-small"
+                >
+                <input 
+                    type="number" 
+                    [(ngModel)]="deductionAmount" 
+                    placeholder="Összeg (Ft)"
+                    class="input-small"
+                >
+                <button (click)="addDeduction()" class="btn-add-small">+</button>
+            </div>
+
+            <div class="deduction-list">
+                <div *ngFor="let d of fixedDeductions; let i = index" class="deduction-item">
+                    <span>{{ d.name }}</span>
+                    <span class="amount">{{ d.amount | number }} Ft</span>
+                    <button (click)="removeDeduction(i)" class="btn-remove">✕</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <h3>🔔 Értesítések</h3>
+            <div class="form-row">
+                <input 
+                    type="text" 
+                    [(ngModel)]="notificationName" 
+                    placeholder="Név"
+                    class="input-small"
+                >
+                <input 
+                    type="number" 
+                    [(ngModel)]="notificationAmount" 
+                    placeholder="Összeg"
+                    class="input-small"
+                >
+                <input 
+                    type="number" 
+                    [(ngModel)]="notificationDay" 
+                    placeholder="Nap"
+                    min="1"
+                    max="31"
+                    class="input-small"
+                    style="max-width: 60px;"
+                >
+                <button (click)="addNotification()" class="btn-add-small">+</button>
+            </div>
+
+            <div class="notification-list">
+                <div *ngFor="let n of notifications; let i = index" class="notification-item">
+                    <span>{{ n.name }}</span>
+                    <span class="amount">{{ n.amount | number }} Ft</span>
+                    <span class="day">{{ getNotificationDayText(n.day) }}</span>
+                    <button (click)="removeNotification(i)" class="btn-remove">✕</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="budget-summary">
+            <div class="summary-item">
+                <span class="label">Fizetés:</span>
+                <span class="value">{{ salary | number }} Ft</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Fix kiadások:</span>
+                <span class="value danger">{{ getTotalDeductions() | number }} Ft</span>
+            </div>
+            <div class="summary-item total">
+                <span class="label">Marad:</span>
+                <span class="value success">{{ getMonthlyBudget() | number }} Ft</span>
+            </div>
+        </div>
+
+        <button (click)="saveAndContinue()" class="btn-continue">
+            Mentés és tovább →
+        </button>
+
+        <button (click)="goToWelcome()" class="btn-back">
+            ← Vissza
+        </button>
+    </div>
+</div>

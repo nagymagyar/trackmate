@@ -1,10 +1,11 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './login/login.component';  // Should point to src/app/login/login.component.ts
-import { CalendarCalculatorComponent } from './calendar-calculator/calendar-calculator.component';  // Should point to src/app/calendar-calculator/calendar-calculator.component.ts
+import { WelcomeComponent } from './welcome/welcome';
+import { LoginComponent } from './login/login';
+import { CalendarCalculatorComponent } from './calendar-calculator/calendar-calculator';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: 'login', component: LoginComponent },
-  { path: 'main', component: CalendarCalculatorComponent },
-  { path: '**', redirectTo: '/login' }
+    { path: '', component: WelcomeComponent },
+    { path: 'login', component: LoginComponent },
+    { path: 'main', component: CalendarCalculatorComponent },
+    { path: '**', component: WelcomeComponent }
 ];

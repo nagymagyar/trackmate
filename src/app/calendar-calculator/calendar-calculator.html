@@ -1,1 +1,246 @@
-<p>calendar-calculator works!</p>
+<div class="container">
+    <!-- Theme Selector -->
+    <div class="theme-selector">
+        <button (click)="toggleThemeSelector()" class="btn-theme">
+            🎨 Téma
+        </button>
+        <div *ngIf="showThemeSelector" class="theme-dropdown">
+            <div 
+                *ngFor="let theme of themes; let i = index" 
+                class="theme-option"
+                (click)="selectTheme(i)"
+            >
+                <span class="theme-color" [style.background]="theme.primaryColor"></span>
+                {{ theme.name }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>💰 Költségkövető</h1>
+        <button (click)="logout()" class="btn-logout">🚪</button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">💵</div>
+            <div class="stat-label">Napi keret</div>
+            <div class="stat-value">{{ dailyBudget | number:'1.0-0' }} Ft</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-label">Havi költés</div>
+            <div class="stat-value">{{ spentThisMonth | number:'1.0-0' }} Ft</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-label">Maradt</div>
+            <div class="stat-value" [class.danger]="getRemainingBudget() < 0">
+                {{ getRemainingBudget() | number:'1.0-0' }} Ft
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Notifications - Kiemelt megjelenítés -->
+    <div *ngIf="todaysNotifications.length > 0" class="notification-highlight">
+        <div class="notification-icon">🔔</div>
+        <div class="notification-content">
+            <h3>Mai fizetendők</h3>
+            <div *ngFor="let notif of todaysNotifications" class="notification-item-highlight">
+                <span class="notif-name">{{ notif.name }}</span>
+                <span class="notif-amount">{{ notif.amount | number }} Ft</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Limit Warning -->
+    <div *ngIf="weeklyStatus.warning" 
+         class="warning-box" 
+         [class.exceeded]="weeklyStatus.exceeded">
+        {{ weeklyStatus.message }}
+    </div>
+
+    <!-- Charts Section - Fejlesztett statisztikák -->
+    <div class="charts-section">
+        <!-- Kördiagram - Kategóriák -->
+        <div class="chart-card">
+            <h3>📊 Kategóriák megoszlása</h3>
+            <div *ngIf="getCategoryTotals().length === 0" class="no-data">
+                Még nincs költésed 💸
+            </div>
+            <div *ngIf="getCategoryTotals().length > 0" class="chart-container">
+                <!-- Kördiagram vizualizáció -->
+                <div class="pie-chart">
+                    <svg viewBox="0 0 100 100">
+                        <circle *ngFor="let item of getCategoryTotals(); let i = index"
+                            cx="50" cy="50" r="40"
+                            fill="transparent"
+                            [attr.stroke]="item.category.color"
+                            stroke-width="20"
+                            [attr.stroke-dasharray]="item.percentage * 2.51 + ' ' + (100 - item.percentage) * 2.51"
+                            [attr.stroke-dashoffset]="getPieOffset(i)"
+                            transform="rotate(-90 50 50)"
+                        />
+                    </svg>
+                    <div class="pie-center">
+                        <span class="total-label">Összesen</span>
+                        <span class="total-value">{{ spentThisMonth | number:'1.0-0' }} Ft</span>
+                    </div>
+                </div>
+                <!-- Kategória lista -->
+                <div class="category-legend">
+                    <div *ngFor="let item of getCategoryTotals()" class="legend-item">
+                        <span class="legend-color" [style.background]="item.category.color"></span>
+                        <span class="legend-icon">{{ item.category.icon }}</span>
+                        <span class="legend-name">{{ item.category.name }}</span>
+                        <span class="legend-percent">{{ item.percentage | number:'1.0-0' }}%</span>
+                        <span class="legend-amount">{{ item.total | number:'1.0-0' }} Ft</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legnagyobb költések -->
+        <div class="chart-card">
+            <h3>🔥 Legnagyobb költések</h3>
+            <div *ngIf="getTopExpenses().length === 0" class="no-data">
+                Még nincs költésed 💸
+            </div>
+            <div *ngIf="getTopExpenses().length > 0" class="top-expenses">
+                <div *ngFor="let item of getTopExpenses(); let i = index" class="top-expense-item">
+                    <span class="rank">#{{ i + 1 }}</span>
+                    <span class="exp-icon">{{ item.category.icon }}</span>
+                    <span class="exp-desc">{{ item.description }}</span>
+                    <span class="exp-amount">{{ item.amount | number:'1.0-0' }} Ft</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Havi összefoglaló -->
+    <div class="summary-card">
+        <h3>📈 Havi összefoglaló</h3>
+        <div class="summary-row">
+            <span>👤 Fizetés</span>
+            <span class="income">{{ userData.salary | number:'1.0-0' }} Ft</span>
+        </div>
+        <div class="summary-row">
+            <span>📉 Levonások</span>
+            <span class="expense">-{{ getTotalFixedDeductions() | number:'1.0-0' }} Ft</span>
+        </div>
+        <div class="summary-row">
+            <span>💸 Költés</span>
+            <span class="expense">-{{ spentThisMonth | number:'1.0-0' }} Ft</span>
+        </div>
+        <div class="summary-row total">
+            <span>💵 Maradt</span>
+            <span [class.positive]="getRemainingBudget() > 0" [class.negative]="getRemainingBudget() < 0">
+                {{ getRemainingBudget() | number:'1.0-0' }} Ft
+            </span>
+        </div>
+    </div>
+
+    <!-- Add Expense Form -->
+    <div class="expense-form">
+        <h3>➕ Új költés</h3>
+        
+        <!-- Category Selector -->
+        <div class="category-selector">
+            <button *ngFor="let cat of categories" 
+                    class="category-btn"
+                    [class.selected]="selectedCategory === cat.name"
+                    [style.--cat-color]="cat.color"
+                    (click)="selectCategory(cat.name)"
+                    [title]="cat.name">
+                {{ cat.icon }}
+            </button>
+        </div>
+        
+        <div class="form-row">
+            <input 
+                type="number" 
+                [(ngModel)]="expenseAmount" 
+                placeholder="Összeg (Ft)"
+                class="input-field amount-input"
+            >
+            <input 
+                type="text" 
+                [(ngModel)]="expenseDescription" 
+                placeholder="Leírás (opcionális)"
+                class="input-field"
+            >
+        </div>
+        <div class="form-row">
+            <input 
+                type="date" 
+                [(ngModel)]="selectedDate" 
+                class="input-field date-input"
+            >
+        </div>
+        
+        <button (click)="addExpense()" class="btn-add" [disabled]="!expenseAmount || expenseAmount <= 0">
+            Hozzáad 💰
+        </button>
+    </div>
+
+    <!-- Calendar -->
+    <div class="calendar">
+        <div class="calendar-header">
+            <button (click)="previousMonth()" class="btn-nav">◀</button>
+            <h2>{{ getMonthName() }}</h2>
+            <button (click)="nextMonth()" class="btn-nav">▶</button>
+        </div>
+        
+        <div class="weekdays">
+            <div *ngFor="let day of weekDays" class="weekday">{{ day }}</div>
+        </div>
+        
+        <div class="days">
+            <div *ngFor="let day of daysInMonth" 
+                 class="day"
+                 [class.empty]="day === 0"
+                 [class.today]="isToday(day)"
+                 [class.has-expenses]="getDayTotal(day) > 0"
+                 (click)="day > 0 && openDayEditor(day)">
+                <span *ngIf="day > 0">{{ day }}</span>
+                <div *ngIf="day > 0 && getDayTotal(day) > 0" class="day-amount">
+                    -{{ getDayTotal(day) | number:'1.0-0' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day Editor Modal -->
+    <div *ngIf="showDayEditor" class="modal-overlay" (click)="closeDayEditor()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+            <h3>{{ getSelectedDayDate() }}</h3>
+            <button class="close-btn" (click)="closeDayEditor()">✕</button>
+            
+            <div class="expense-list">
+                <div *ngFor="let exp of getExpensesForDay(selectedDay); let i = index" class="expense-row">
+                    <span>
+                        <span class="exp-cat-icon">{{ getCategoryForExpense(exp.description).icon }}</span>
+                        {{ exp.description }}: {{ exp.amount | number }} Ft
+                    </span>
+                    <button (click)="deleteExpense(i)" class="btn-delete">🗑️</button>
+                </div>
+                <p *ngIf="getExpensesForDay(selectedDay).length === 0">Nincs költés ezen a napon</p>
+            </div>
+            
+            <div class="add-expense-form">
+                <input type="number" [(ngModel)]="expenseAmount" placeholder="Összeg" class="input-field">
+                <input type="text" [(ngModel)]="expenseDescription" placeholder="Leírás" class="input-field">
+                <button (click)="addExpenseToSelectedDay()" class="btn-add">Hozzáad</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Button -->
+    <div class="settings-area">
+        <button (click)="goToSettings()" class="btn-settings">⚙️ Beállítások</button>
+    </div>
+</div>

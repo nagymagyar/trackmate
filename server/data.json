@@ -1,0 +1,105 @@
+{
+  "users": {
+    "teszt": {
+      "password": "teszt123",
+      "salary": 0,
+      "fixedDeductions": [],
+      "notifications": [],
+      "expenses": []
+    },
+    "majom": {
+      "salary": 50000,
+      "fixedDeductions": [],
+      "notifications": [],
+      "expenses": [
+        {
+          "date": "2026-02-24",
+          "amount": 6000,
+          "description": "Szórakozás: 1"
+        },
+        {
+          "date": "2026-02-27",
+          "amount": 1000,
+          "description": "fasz"
+        }
+      ],
+      "password": "roller32"
+    },
+    "user1": {
+      "password": "pass123",
+      "salary": 0,
+      "fixedDeductions": [],
+      "notifications": [],
+      "expenses": []
+    },
+    "teszt2": {
+      "password": "pass123",
+      "salary": 0,
+      "fixedDeductions": [],
+      "notifications": [],
+      "expenses": []
+    },
+    "majom1": {
+      "salary": 600000,
+      "fixedDeductions": [
+        {
+          "name": "albérlet",
+          "amount": 150000
+        }
+      ],
+      "notifications": [
+        {
+          "name": "kocsi ",
+          "amount": 20000,
+          "day": 25,
+          "recurring": true
+        }
+      ],
+      "expenses": [],
+      "password": "roller32"
+    },
+    "proba": {
+      "salary": 300000,
+      "fixedDeductions": [
+        {
+          "name": "alb�rlet",
+          "amount": 150000
+        }
+      ],
+      "notifications": [],
+      "expenses": [],
+      "password": "teszt123"
+    },
+    "proba2": {
+      "salary": 400000,
+      "fixedDeductions": [
+        {
+          "name": "Rent",
+          "amount": 150000
+        },
+        {
+          "name": "Internet",
+          "amount": 5000
+        }
+      ],
+      "notifications": [],
+      "expenses": [],
+      "password": "teszt123",
+      "email": ""
+    },
+    "turul": {
+      "salary": 23030314,
+      "fixedDeductions": [],
+      "notifications": [],
+      "expenses": [
+        {
+          "date": "2026-02-24",
+          "amount": 200000,
+          "description": "Szórakozás"
+        }
+      ],
+      "password": "roller32",
+      "email": ""
+    }
+  }
+}

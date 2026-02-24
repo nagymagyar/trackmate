@@ -1,0 +1,45 @@
+<div class="welcome-container">
+    <!-- Theme Selector -->
+    <div class="theme-selector">
+        <button (click)="toggleThemeSelector()" class="btn-theme">
+            🎨 Téma
+        </button>
+        <div *ngIf="showThemeSelector" class="theme-dropdown">
+            <div 
+                *ngFor="let theme of themes; let i = index" 
+                class="theme-option"
+                (click)="selectTheme(i)"
+            >
+                <span class="theme-color" [style.background]="theme.primaryColor"></span>
+                {{ theme.name }}
+            </div>
+        </div>
+    </div>
+
+    <div class="welcome-content">
+        <div class="logo">💰</div>
+        <h1>Költségkövető</h1>
+        <p class="subtitle">Kövesd nyomon költéseidet és tervezd meg a pénzügyeidet!</p>
+        
+        <div class="features">
+            <div class="feature">
+                <span class="feature-icon">📊</span>
+                <span>Napi költés keret</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">📅</span>
+                <span>Naptári áttekintés</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">⚠️</span>
+                <span>Heti limit figyelmeztetés</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">🔔</span>
+                <span>Fizetendő értesítések</span>
+            </div>
+        </div>
+        
+        <button (click)="goToLogin()" class="btn-start">Kezdjük! →</button>
+    </div>
+</div>
