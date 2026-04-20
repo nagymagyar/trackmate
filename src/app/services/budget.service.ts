@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable, of, from } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
 export interface FixedDeduction {
     name: string;
@@ -33,23 +34,12 @@ export interface LoginResponse {
     message?: string;
 }
 
-export interface User {
-    username: string;
-    password: string;
-    email?: string;
-    salary: number;
-    fixedDeductions: FixedDeduction[];
-    notifications: Notification[];
-    expenses: Expense[];
-}
-
 @Injectable({
     providedIn: 'root'
 })
 export class BudgetService {
+    private API_BASE = 'http://localhost:3000/api';
     private storageKey = 'budget_app_user';
-    private storageKeyData = 'budget_app_data';
-    private usersKey = 'budget_app_users';
     
     userData = signal<UserData>({
         salary: 0,
@@ -65,25 +55,11 @@ export class BudgetService {
     }
 
     // Load user ID from localStorage
-    private loadFromStorage(): void {
+    private async loadFromStorage(): Promise<void> {
         this.currentUserId = localStorage.getItem(this.storageKey);
         if (this.currentUserId) {
-            this.loadUserData();
+            await this.loadUserData();
         }
-    }
-
-    // Get all users from localStorage
-    private getUsers(): { [key: string]: User } {
-        const usersJson = localStorage.getItem(this.usersKey);
-        if (usersJson) {
-            return JSON.parse(usersJson);
-        }
-        return {};
-    }
-
-    // Save all users to localStorage
-    private saveUsers(users: { [key: string]: User }): void {
-        localStorage.setItem(this.usersKey, JSON.stringify(users));
     }
 
     // Save user ID to localStorage
@@ -95,87 +71,163 @@ export class BudgetService {
     // Clear user ID
     private clearUserId(): void {
         localStorage.removeItem(this.storageKey);
-        localStorage.removeItem(this.storageKeyData);
         this.currentUserId = null;
     }
 
-    // Login - check credentials against stored users
-    login(username: string, password: string): Observable<LoginResponse> {
-        const users = this.getUsers();
-        const user = users[username];
-        
-        if (user && user.password === password) {
-            this.saveUserId(username);
-            this.loadUserData();
-            return of({ success: true, userId: username });
-        }
-        
-        return of({ success: false, message: 'Hibás felhasználónév vagy jelszó!' });
-    }
-
-    // Register - create new user
-    register(username: string, password: string, email?: string): Observable<LoginResponse> {
-        const users = this.getUsers();
-        
-        if (users[username]) {
-            return of({ success: false, message: 'Felhasználó már létezik!' });
-        }
-        
-        // Create new user
-        users[username] = {
-            username,
-            password,
-            email,
-            salary: 0,
-            fixedDeductions: [],
-            notifications: [],
-            expenses: []
-        };
-        
-        this.saveUsers(users);
-        this.saveUserId(username);
-        
-        return of({ success: true, userId: username });
-    }
-
-    // Load user data from localStorage
-    loadUserData(): void {
-        if (!this.currentUserId) return;
-        
-        const users = this.getUsers();
-        const user = users[this.currentUserId];
-        
-        if (user) {
-            this.userData.set({
-                salary: user.salary || 0,
-                fixedDeductions: user.fixedDeductions || [],
-                notifications: user.notifications || [],
-                expenses: user.expenses || []
+    async apiLogin(username: string, password: string): Promise<LoginResponse> {
+        try {
+            const response = await fetch(`${this.API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
             });
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            return { success: false, message: 'Server error' };
         }
     }
 
-    // Save user data to localStorage
-    saveUserData(): void {
+    login(username: string, password: string): Observable<LoginResponse> {
+        return from(this.apiLogin(username, password)).pipe(
+            tap(response => {
+                if (response.success) {
+                    this.saveUserId(response.userId!);
+                    this.loadUserData();
+                }
+            })
+        );
+    }
+
+    async apiRegister(username: string, password: string, email?: string): Promise<LoginResponse> {
+        try {
+            const response = await fetch(`${this.API_BASE}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, email })
+            });
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            return { success: false, message: 'Server error' };
+        }
+    }
+
+    register(username: string, password: string, email?: string): Observable<LoginResponse> {
+        return from(this.apiRegister(username, password, email)).pipe(
+            tap(response => {
+                if (response.success) {
+                    this.saveUserId(response.userId!);
+                }
+            })
+        );
+    }
+
+    async loadUserData(): Promise<void> {
         if (!this.currentUserId) return;
         
-        const users = this.getUsers();
-        const currentData = this.userData();
-        
-        if (users[this.currentUserId]) {
-            users[this.currentUserId].salary = currentData.salary;
-            users[this.currentUserId].fixedDeductions = currentData.fixedDeductions;
-            users[this.currentUserId].notifications = currentData.notifications;
-            users[this.currentUserId].expenses = currentData.expenses;
-            this.saveUsers(users);
+        try {
+            const response = await fetch(`${this.API_BASE}/user/${this.currentUserId}`);
+            const user = await response.json();
+            if (user) {
+                this.userData.set(user);
+                // Reset expenses for new month if needed
+                this.checkAndResetMonthlyExpenses();
+            }
+        } catch (error) {
+            console.error('Load user data error:', error);
         }
-        
-        this.saveToStorage();
     }
 
-    // Save data to localStorage (backup)
-    private saveToStorage(): void {
-        localStorage.setItem(this.storageKeyData, JSON.stringify(this.userData()));
+    public async checkAndResetMonthlyExpenses(): Promise<void> {
+        if (!this.currentUserId) return;
+        
+        const currentMonthKey = this.getMonthKey();
+        const lastMonthKey = localStorage.getItem(`budget_app_last_month_${this.currentUserId}`);
+        
+        if (lastMonthKey !== currentMonthKey) {
+            const current = this.userData();
+            this.userData.set({
+                ...current,
+                expenses: []
+            });
+            localStorage.setItem(`budget_app_last_month_${this.currentUserId}`, currentMonthKey);
+            await this.saveUserData();
+        }
+    }
+
+    private getMonthKey(): string {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    async saveUserData(): Promise<void> {
+        if (!this.currentUserId) return;
+        
+        try {
+            await fetch(`${this.API_BASE}/user/${this.currentUserId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.userData())
+            });
+        } catch (error) {
+            console.error('Save user data error:', error);
+        }
+    }
+
+    async addExpense(expense: Expense): Promise<void> {
+        const current = this.userData();
+        const newData = {
+            ...current,
+            expenses: [...current.expenses, expense]
+        };
+        this.userData.set(newData);
+        await this.saveUserData();
+    }
+
+    async updateSalary(salary: number): Promise<void> {
+        const current = this.userData();
+        const newData = { ...current, salary };
+        this.userData.set(newData);
+        await this.saveUserData();
+    }
+
+    async addFixedDeduction(deduction: FixedDeduction): Promise<void> {
+        const current = this.userData();
+        const newData = {
+            ...current,
+            fixedDeductions: [...current.fixedDeductions, deduction]
+        };
+        this.userData.set(newData);
+        await this.saveUserData();
+    }
+
+    async addNotification(notification: Notification): Promise<void> {
+        const current = this.userData();
+        const newData = {
+            ...current,
+            notifications: [...current.notifications, notification]
+        };
+        this.userData.set(newData);
+        await this.saveUserData();
+    }
+
+    async removeFixedDeduction(index: number): Promise<void> {
+        const current = this.userData();
+        const deductions = [...current.fixedDeductions];
+        deductions.splice(index, 1);
+        const newData = { ...current, fixedDeductions: deductions };
+        this.userData.set(newData);
+        await this.saveUserData();
+    }
+
+    async removeNotification(index: number): Promise<void> {
+        const current = this.userData();
+        const notifications = [...current.notifications];
+        notifications.splice(index, 1);
+        const newData = { ...current, notifications };
+        this.userData.set(newData);
+        await this.saveUserData();
     }
 
     // Check if logged in
@@ -188,7 +240,6 @@ export class BudgetService {
         return this.currentUserId;
     }
 
-    // Logout - clear data
     logout(): void {
         this.userData.set({
             salary: 0,
@@ -199,12 +250,10 @@ export class BudgetService {
         this.clearUserId();
     }
 
-    // Get total fixed deductions
     getTotalFixedDeductions(): number {
         return this.userData().fixedDeductions.reduce((sum, d) => sum + d.amount, 0);
     }
 
-    // Get available daily budget
     getDailyBudget(): number {
         const now = new Date();
         const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -218,21 +267,17 @@ export class BudgetService {
         return Math.max(0, available / daysRemaining);
     }
 
-    // Helper function to parse date string correctly in local timezone
     private parseDate(dateStr: string): Date {
-        // Handle YYYY-MM-DD format - split and create date in local timezone
         const parts = dateStr.split('-');
         if (parts.length === 3) {
             const year = parseInt(parts[0]);
-            const month = parseInt(parts[1]) - 1; // Month is 0-indexed in JavaScript
+            const month = parseInt(parts[1]) - 1;
             const day = parseInt(parts[2]);
             return new Date(year, month, day);
         }
-        // Fallback to default parsing
         return new Date(dateStr);
     }
 
-    // Get spent amount this month
     getSpentThisMonth(): number {
         const now = new Date();
         const currentMonth = now.getMonth();
@@ -246,57 +291,9 @@ export class BudgetService {
             .reduce((sum, e) => sum + e.amount, 0);
     }
 
-    // Get last month key for reset check
-    private getMonthKey(): string {
-        const now = new Date();
-        return `${now.getFullYear()}-${now.getMonth()}`;
-    }
-
-    // Check and reset expenses for new month
-    checkAndResetMonthlyExpenses(): void {
-        const lastMonthKey = localStorage.getItem('budget_app_last_month');
-        const currentMonthKey = this.getMonthKey();
-        
-        if (lastMonthKey !== currentMonthKey) {
-            // New month - keep settings but reset expenses
-            const currentData = this.userData();
-            const resetData: UserData = {
-                salary: currentData.salary,
-                fixedDeductions: currentData.fixedDeductions,
-                notifications: currentData.notifications,
-                expenses: [] // Reset expenses for new month
-            };
-            
-            this.userData.set(resetData);
-            localStorage.setItem('budget_app_last_month', currentMonthKey);
-            this.saveUserData();
-        } else if (!lastMonthKey) {
-            // First time - set current month
-            localStorage.setItem('budget_app_last_month', currentMonthKey);
-        }
-    }
-
-    // Reset expenses manually (for testing or user request)
-    resetMonthlyExpenses(): void {
-        const currentData = this.userData();
-        const resetData: UserData = {
-            salary: currentData.salary,
-            fixedDeductions: currentData.fixedDeductions,
-            notifications: currentData.notifications,
-            expenses: []
-        };
-        this.userData.set(resetData);
-        localStorage.setItem('budget_app_last_month', this.getMonthKey());
-        this.saveUserData();
-    }
-
-    // Get weekly limit status
     getWeeklyLimitStatus(): { warning: boolean; exceeded: boolean; message: string } {
-        const now = new Date();
-        const dayOfWeek = now.getDay();
         const weekLimit = this.getDailyBudget() * 7;
         const spentThisWeek = this.getSpentThisWeek();
-        
         const percentage = weekLimit > 0 ? (spentThisWeek / weekLimit) * 100 : 0;
         
         if (percentage >= 100) {
@@ -307,7 +304,6 @@ export class BudgetService {
         return { warning: false, exceeded: false, message: '' };
     }
 
-    // Get spent this week
     getSpentThisWeek(): number {
         const now = new Date();
         const dayOfWeek = now.getDay();
@@ -316,84 +312,18 @@ export class BudgetService {
         startOfWeek.setHours(0, 0, 0, 0);
         
         return this.userData().expenses
-            .filter(e => this.parseDate(e.date) >= startOfWeek)
+            .filter(e => {
+                const expDate = this.parseDate(e.date);
+                return expDate >= startOfWeek;
+            })
             .reduce((sum, e) => sum + e.amount, 0);
     }
 
-    // Get today's notifications
     getTodaysNotifications(): Notification[] {
         const today = new Date().getDate();
         return this.userData().notifications.filter(n => n.day === today);
     }
 
-    // Add expense
-    addExpense(expense: Expense): void {
-        const current = this.userData();
-        const newData = {
-            ...current,
-            expenses: [...current.expenses, expense]
-        };
-        this.userData.set(newData);
-        this.saveToStorage();
-        this.saveUserData();
-    }
-
-    // Update salary
-    updateSalary(salary: number): void {
-        const current = this.userData();
-        const newData = { ...current, salary };
-        this.userData.set(newData);
-        this.saveToStorage();
-        this.saveUserData();
-    }
-
-    // Add fixed deduction
-    addFixedDeduction(deduction: FixedDeduction): void {
-        const current = this.userData();
-        const newData = {
-            ...current,
-            fixedDeductions: [...current.fixedDeductions, deduction]
-        };
-        this.userData.set(newData);
-        this.saveToStorage();
-        this.saveUserData();
-    }
-
-    // Add notification
-    addNotification(notification: Notification): void {
-        const current = this.userData();
-        const newData = {
-            ...current,
-            notifications: [...current.notifications, notification]
-        };
-        this.userData.set(newData);
-        this.saveToStorage();
-        this.saveUserData();
-    }
-
-    // Remove fixed deduction
-    removeFixedDeduction(index: number): void {
-        const current = this.userData();
-        const deductions = [...current.fixedDeductions];
-        deductions.splice(index, 1);
-        const newData = { ...current, fixedDeductions: deductions };
-        this.userData.set(newData);
-        this.saveToStorage();
-        this.saveUserData();
-    }
-
-    // Remove notification
-    removeNotification(index: number): void {
-        const current = this.userData();
-        const notifications = [...current.notifications];
-        notifications.splice(index, 1);
-        const newData = { ...current, notifications };
-        this.userData.set(newData);
-        this.saveToStorage();
-        this.saveUserData();
-    }
-
-    // Clear all data
     clearAllData(): void {
         this.userData.set({
             salary: 0,
@@ -401,6 +331,6 @@ export class BudgetService {
             notifications: [],
             expenses: []
         });
-        this.saveToStorage();
     }
 }
+

@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
 import { Router } from '@angular/router';
 import { BudgetService, Expense } from '../services/budget.service';
 import { ThemeService, Theme, THEMES } from '../services/theme.service';
@@ -74,8 +75,7 @@ export class CalendarCalculatorComponent implements OnInit {
             return;
         }
         
-        // Check and reset expenses for new month
-        this.budgetService.checkAndResetMonthlyExpenses();
+        // Monthly reset via API load/save handled in service
         
         this.selectedDate = this.formatDate(new Date());
         this.generateCalendar();
@@ -142,12 +142,12 @@ export class CalendarCalculatorComponent implements OnInit {
         }
     }
 
-    previousMonth(): void {
+    async previousMonth(): Promise<void> {
         this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 1);
         this.generateCalendar();
     }
 
-    nextMonth(): void {
+    async nextMonth(): Promise<void> {
         this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 1);
         this.generateCalendar();
     }

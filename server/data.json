@@ -100,6 +100,12 @@
       ],
       "password": "roller32",
       "email": ""
+    },
+    "faszt": {
+      "salary": 0,
+      "fixedDeductions": [],
+      "notifications": [],
+      "expenses": []
     }
   }
 }
