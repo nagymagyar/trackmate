@@ -121,7 +121,7 @@ export class LoginComponent {
                 }
             });
         } else {
-            this.budgetService.register(this.username, this.password, this.email).subscribe({
+            this.budgetService.register(this.username, this.password, this.email || '').subscribe({
                 next: (response: LoginResponse) => {
                     this.isLoading = false;
                     if (response.success) {

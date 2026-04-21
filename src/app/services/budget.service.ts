@@ -175,6 +175,20 @@ export class BudgetService {
         }
     }
 
+    async updateExpense(expenseIndex: number, updatedExpense: Expense): Promise<void> {
+        if (!this.currentUserId) return;
+        
+        try {
+            await fetch(`${this.API_BASE}/user/${this.currentUserId}/expense/${expenseIndex}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedExpense)
+            });
+        } catch (error) {
+            console.error('Update expense error:', error);
+        }
+    }
+
     async addExpense(expense: Expense): Promise<void> {
         const current = this.userData();
         const newData = {

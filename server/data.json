@@ -114,6 +114,28 @@
       "expenses": [],
       "password": "pocs",
       "email": "adam.zsitnyak@gmail.com"
+    },
+    "fasz1": {
+      "salary": 0,
+      "fixedDeductions": [],
+      "notifications": [],
+      "expenses": [],
+      "password": "roller32",
+      "email": "fast@gmail.com"
+    },
+    "fast2": {
+      "salary": 100000,
+      "fixedDeductions": [],
+      "notifications": [],
+      "expenses": [
+        {
+          "date": "2026-04-01",
+          "amount": 212323,
+          "description": "Költés"
+        }
+      ],
+      "password": "roller32",
+      "email": "fast2@gmail.com"
     }
   }
 }

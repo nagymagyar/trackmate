@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { BudgetService } from '../services/budget.service';
 import { Router } from '@angular/router';
-import { ThemeService, THEMES } from '../services/theme.service';
+import { ThemeService, Theme, THEMES } from '../services/theme.service';
 
 interface BackendUser {
   username: string;
@@ -33,15 +33,15 @@ export class DashboardComponent implements OnInit {
   public router = inject(Router);
   public themeService = inject(ThemeService);
 
-  themes = THEMES;
+  themes: Theme[] = THEMES;
   showThemeSelector = false;
   
   // Admin login
   adminUsername = '';
   adminPassword = '';
   loginError = '';
-  showLoginForm = true;
-  adminLoggedIn = false;
+  showLoginForm = false;
+  adminLoggedIn = true;
 
   // CRUD
   newUser: NewUser = { username: '', password: '', email: '', salary: 0 };

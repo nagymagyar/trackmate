@@ -32,7 +32,7 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
     templateUrl: './calendar-calculator.html',
     styleUrl: './calendar-calculator.css'
 })
-export class CalendarCalculatorComponent implements OnInit {
+export class TrackyComponent implements OnInit {
     private budgetService = inject(BudgetService);
     private themeService = inject(ThemeService);
     private router = inject(Router);
@@ -47,10 +47,15 @@ export class CalendarCalculatorComponent implements OnInit {
     expenseDescription: string = '';
     selectedCategory: string = '';
     selectedDate: string = '';
-    
+
     // Day editor
     showDayEditor: boolean = false;
     selectedDay: number = 0;
+
+    // Edit state
+    editingExpenseIndex: number = -1;
+    tempExpenseAmount: number | null = null;
+    tempExpenseDescription: string = '';
 
     // Calendar - hétfővel kezdődik (0 = hétfő)
     currentDate = new Date();
@@ -74,12 +79,12 @@ export class CalendarCalculatorComponent implements OnInit {
             this.router.navigate(['/login']);
             return;
         }
-        
+
         // Monthly reset via API load/save handled in service
-        
+
         this.selectedDate = this.formatDate(new Date());
         this.generateCalendar();
-        
+
         // Check server status
         this.checkServerStatus();
     }
@@ -128,7 +133,7 @@ export class CalendarCalculatorComponent implements OnInit {
         let firstDay = new Date(year, month, 1).getDay();
         if (firstDay === 0) firstDay = 7; // vasárnap -> 7
         firstDay = firstDay - 1; // 0=hétfő
-        
+
         const daysCount = new Date(year, month + 1, 0).getDate();
 
         this.daysInMonth = [];
@@ -188,7 +193,7 @@ export class CalendarCalculatorComponent implements OnInit {
             if (this.selectedCategory && !description.includes(this.selectedCategory)) {
                 description = this.selectedCategory + (description ? ': ' + description : '');
             }
-            
+
             const expense: Expense = {
                 date: this.selectedDate,
                 amount: amount,
@@ -290,7 +295,7 @@ export class CalendarCalculatorComponent implements OnInit {
             if (this.selectedCategory && !description.includes(this.selectedCategory)) {
                 description = this.selectedCategory + (description ? ': ' + description : '');
             }
-            
+
             const expense: Expense = {
                 date: dateStr,
                 amount: amount,
@@ -304,18 +309,74 @@ export class CalendarCalculatorComponent implements OnInit {
     }
 
     deleteExpense(index: number): void {
+        if (this.editingExpenseIndex === index) {
+            this.cancelEdit();
+            return;
+        }
+
         const expenses = this.getExpensesForDay(this.selectedDay);
         if (expenses[index]) {
-            const currentExpenses = this.userData.expenses;
+            const currentExpenses = [...this.userData.expenses];
             const expToDelete = expenses[index];
-            const actualIndex = currentExpenses.findIndex(e => e.date === expToDelete.date && e.amount === expToDelete.amount && e.description === expToDelete.description);
+            const actualIndex = currentExpenses.findIndex(e => 
+                e.date === expToDelete.date && 
+                e.amount === expToDelete.amount && 
+                e.description === expToDelete.description
+            );
             if (actualIndex > -1) {
                 currentExpenses.splice(actualIndex, 1);
+                const currentUserData = this.userData;
                 this.budgetService.userData.set({
-                    ...this.userData,
-                    expenses: [...currentExpenses]
+                    ...currentUserData,
+                    expenses: currentExpenses
                 });
+                this.budgetService.saveUserData();
             }
         }
+    }
+
+    startEdit(index: number): void {
+        this.editingExpenseIndex = index;
+        const expenses = this.getExpensesForDay(this.selectedDay);
+        const expense = expenses[index];
+        if (expense) {
+            this.tempExpenseAmount = expense.amount;
+            this.tempExpenseDescription = expense.description;
+        }
+    }
+
+    async saveEdit(): Promise<void> {
+        if (this.editingExpenseIndex >= 0 && this.tempExpenseAmount && this.tempExpenseAmount > 0) {
+            const dayExpenses = this.getExpensesForDay(this.selectedDay);
+            const expense = dayExpenses[this.editingExpenseIndex];
+            if (expense) {
+                const globalIndex = this.userData.expenses.findIndex(e => 
+                    e.date === expense.date && 
+                    e.amount === expense.amount && 
+                    e.description === expense.description
+                );
+                if (globalIndex > -1) {
+                    const currentExpenses = [...this.userData.expenses];
+                    currentExpenses[globalIndex] = {
+                        ...expense,
+                        amount: this.tempExpenseAmount,
+                        description: this.tempExpenseDescription || expense.description
+                    };
+                    const currentUserData = this.userData;
+                    this.budgetService.userData.set({
+                        ...currentUserData,
+                        expenses: currentExpenses
+                    });
+                    await this.budgetService.saveUserData();
+                }
+            }
+        }
+        this.cancelEdit();
+    }
+
+    cancelEdit(): void {
+        this.editingExpenseIndex = -1;
+        this.tempExpenseAmount = null;
+        this.tempExpenseDescription = '';
     }
 }

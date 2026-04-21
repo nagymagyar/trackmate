@@ -23,9 +23,9 @@
             <!-- Server Status -->
             <div class="server-status" [class.online]="serverStatus === 'online'" [class.offline]="serverStatus === 'offline'" [class.checking]="serverStatus === 'checking'">
                 <span class="status-dot"></span>
-                <span class="status-text" *ngIf="serverStatus === 'online'">Backend: Online</span>
-                <span class="status-text" *ngIf="serverStatus === 'offline'">Backend: Offline</span>
-                <span class="status-text" *ngIf="serverStatus === 'checking'">Backend: Ellenőrzés...</span>
+                <span class="status-text" *ngIf="serverStatus === 'online'">Szerver: Online</span>
+                <span class="status-text" *ngIf="serverStatus === 'offline'">Szerver: Offline</span>
+                <span class="status-text" *ngIf="serverStatus === 'checking'">Szerver: Ellenőrzés...</span>
             </div>
             
             <!-- Notifications Bell -->
@@ -257,11 +257,34 @@
             
             <div class="expense-list">
                 <div *ngFor="let exp of getExpensesForDay(selectedDay); let i = index" class="expense-row">
-                    <span>
+                    <!-- Edit mode -->
+                    <div *ngIf="editingExpenseIndex === i">
                         <span class="exp-cat-icon">{{ getCategoryForExpense(exp.description).icon }}</span>
-                        {{ exp.description }}: {{ exp.amount | number }} Ft
-                    </span>
-                    <button (click)="deleteExpense(i)" class="btn-delete">🗑️</button>
+                        <input type="number" 
+                               [(ngModel)]="tempExpenseAmount" 
+                               class="input-field input-small amount-edit"
+                               (keyup.enter)="saveEdit()"
+                               min="1">
+                        <input type="text" 
+                               [(ngModel)]="tempExpenseDescription" 
+                               class="input-field input-small desc-edit"
+                               placeholder="Leírás"
+                               (keyup.enter)="saveEdit()">
+                        <button (click)="saveEdit()" class="btn-small btn-save" title="Mentés (Enter)">✅</button>
+                        <button (click)="cancelEdit()" class="btn-small btn-cancel" title="Mégse (Esc)">❌</button>
+                    </div>
+                    
+                    <!-- Normal view -->
+                    <div *ngIf="editingExpenseIndex !== i">
+                        <span>
+                            <span class="exp-cat-icon">{{ getCategoryForExpense(exp.description).icon }}</span>
+                            <strong>{{ exp.description }}</strong>: <span class="amount">{{ exp.amount | number }} Ft</span>
+                        </span>
+                        <div class="action-buttons">
+                            <button (click)="startEdit(i)" class="btn-small btn-edit" title="Szerkesztés">✏️</button>
+                            <button (click)="deleteExpense(i)" class="btn-delete" title="Törlés">🗑️</button>
+                        </div>
+                    </div>
                 </div>
                 <p *ngIf="getExpensesForDay(selectedDay).length === 0">Nincs költés ezen a napon</p>
             </div>

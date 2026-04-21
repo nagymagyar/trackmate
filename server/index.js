@@ -204,6 +204,25 @@ app.post('/api/admin/user/:username/expense', (req, res) => {
     res.json({ success: true });
 });
 
+// Update expense endpoint
+app.put('/api/user/:id/expense/:expIndex', (req, res) => {
+    const data = loadData();
+    const userId = req.params.id;
+    const expIndex = parseInt(req.params.expIndex);
+    
+    if (!data.users[userId]) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    if (!data.users[userId].expenses || expIndex >= data.users[userId].expenses.length || expIndex < 0) {
+        return res.status(404).json({ success: false, message: 'Expense not found' });
+    }
+    
+    data.users[userId].expenses[expIndex] = { ...req.body };
+    saveData(data);
+    res.json({ success: true });
+});
+
 // Ping endpoint
 app.get('/api/ping', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

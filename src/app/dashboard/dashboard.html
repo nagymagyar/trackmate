@@ -1,23 +1,26 @@
 <div class="admin-dashboard">
-  <!-- Theme Selector -->
-  <div class="theme-selector">
-    <button (click)="toggleThemeSelector()" class="btn-theme">
-      🎨 Téma
-    </button>
-    <div *ngIf="showThemeSelector" class="theme-dropdown">
-      <div *ngFor="let theme of themes; let i = index" 
-           class="theme-option"
-           (click)="selectTheme(i)">
-        <span class="theme-color" [style.background]="theme.primaryColor"></span>
-        {{ theme.icon }} {{ theme.name }}
-      </div>
+
+    <!-- Theme Selector -->
+    <div class="theme-selector">
+        <button (click)="toggleThemeSelector()" class="btn-theme">
+            🎨 Téma
+        </button>
+        <div *ngIf="showThemeSelector" class="theme-dropdown">
+            <div 
+                *ngFor="let theme of themes; let i = index" 
+                class="theme-option"
+                (click)="selectTheme(i)"
+            >
+                <span class="theme-color" [style.background]="theme.primaryColor"></span>
+                {{ theme.name }}
+            </div>
+        </div>
     </div>
-  </div>
 
   <!-- Server Status -->
   <div class="status-bar">
     <div class="server-status" [class.online]="serverStatus === 'online'" [class.offline]="serverStatus === 'offline'">
-      Backend: {{ serverStatus === 'online' ? '🟢 Online' : '🔴 Offline' }}
+      Szerver: {{ serverStatus === 'online' ? '🟢 Online' : '🔴 Offline' }}
     </div>
     <button (click)="loadRawData()" class="btn-raw" *ngIf="adminLoggedIn">Raw data</button>
   </div>

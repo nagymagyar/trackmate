@@ -1,14 +1,34 @@
-# TrackMate Admin Dashboard & Login Fix
+# TrackMate Edit Expense Feature Implementation Plan
 
-## Steps:
-1. [x] Fix login redirect issue (login.ts -> navigates to main after success)
-2. [x] Start backend server (server/index.js)
-3. [x] Add admin CRUD endpoints to backend
-4. [x] Update dashboard.ts with login form and CRUD functions
-5. [x] Redesign dashboard.html with tabs, modals, tables
-6. [x] Style dashboard.css for modern prettier look
-7. [ ] Test all pages and CRUD operations
-8. [ ] attempt_completion
+## Status: ✅ In Progress
 
-Current progress: Backend CRUD complete, now implementing dashboard UI
+## Step 1: Create TODO.md [COMPLETED]
 
+## Step 2: Update calendar-calculator.ts ✅ COMPLETED
+
+## Step 3: Update calendar-calculator.html ✅ COMPLETED
+
+## Step 4: Update budget.service.ts ✅ COMPLETED (frontend direct + service ready)
+
+## Step 5: Update server/index.js
+- [ ] Add PUT endpoint /api/user/:userId/expense/:expIndex
+- [ ] Implement update handler
+
+## Step 6: Test Implementation
+- [ ] Test add → edit → save flow
+- [ ] Test edit → cancel
+- [ ] Test delete during edit
+- [ ] Verify backend data.json updates
+- [ ] Attempt completion
+
+## Step 6: Test Implementation [IN PROGRESS]
+
+✅ Frontend edit UI + logic complete
+✅ Backend PUT endpoint added  
+✅ Data persistence via saveUserData()
+
+To test:
+1. `ng serve` (if not running)
+2. `node server/index.js` (if not running) 
+3. Login → Calendar → Add expense → Open day editor → Edit amount/desc → Verify save
+4. Check server/data.json confirms update
