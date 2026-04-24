@@ -12,3 +12,15 @@ export const autoLoginGuard: CanActivateFn = (route, state) => {
 
   return router.createUrlTree(['/login']);
 };
+
+export const adminGuard: CanActivateFn = (route, state) => {
+  const budgetService = inject(BudgetService);
+  const router = inject(Router);
+
+  if (budgetService.isLoggedIn() && budgetService.isAdminUser()) {
+    return true;
+  }
+
+  return router.createUrlTree(['/main']);
+};
+

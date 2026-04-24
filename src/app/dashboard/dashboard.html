@@ -106,13 +106,13 @@
         </thead>
         <tbody>
           <tr *ngFor="let user of allUsers">
-            <td>{{ user.username }}</td>
+            <td>{{ user.name }}</td>
             <td>{{ user.salary | number }} Ft</td>
-            <td>{{ user.expensesCount }}</td>
-            <td>{{ user.totalSpent | number }} Ft</td>
+            <td>{{ user.expenses_count }}</td>
+            <td>{{ user.expenses_sum_amount | number }} Ft</td>
             <td>
               <button class="btn-small btn-edit" (click)="editUser(user)">Szerkeszt</button>
-              <button class="btn-small btn-delete" (click)="deleteUser(user.username)">Töröl</button>
+              <button class="btn-small btn-delete" (click)="deleteUser(user.id)">Töröl</button>
             </td>
           </tr>
         </tbody>
@@ -122,11 +122,11 @@
     <!-- Edit User Form -->
     <div *ngIf="showEditForm" class="modal-overlay">
       <div class="modal">
-        <h3>{{ editUserUsername }} szerkesztése</h3>
+        <h3>Felhasználó szerkesztése</h3>
         <form (ngSubmit)="updateUser()">
           <div class="form-group">
-            <label>Felhasználónév</label>
-            <input type="text" [value]="editUserUsername" disabled>
+            <label>ID</label>
+            <input type="text" [value]="editUserId" disabled>
           </div>
           <div class="form-group">
             <label>Fizetés (Ft)</label>
@@ -145,15 +145,11 @@
     </div>
 
     <!-- Stats -->
-    <div *ngIf="false" class="stats-section">
+    <div *ngIf="showStats" class="stats-section">
       <div class="stats-grid">
         <div class="stat-card">
           <h3>👥 Total Users</h3>
           <p class="big-number">{{ totalUsers }}</p>
-        </div>
-        <div class="stat-card">
-          <h3>📄 Data File</h3>
-          <p>{{ dataFileSize | number }} bytes</p>
         </div>
         <div class="stat-card">
           <h3>💰 Avg Salary</h3>
@@ -164,7 +160,7 @@
 
     <!-- Raw Data -->
     <div *ngIf="rawData" class="raw-data">
-      <h2>Raw data.json</h2>
+      <h2>Raw data</h2>
       <pre>{{ rawData | json }}</pre>
     </div>
 
@@ -174,3 +170,4 @@
     </div>
   </div>
 </div>
+

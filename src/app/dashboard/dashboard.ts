@@ -5,12 +5,16 @@ import { HttpClient } from '@angular/common/http';
 import { BudgetService } from '../services/budget.service';
 import { Router } from '@angular/router';
 import { ThemeService, Theme, THEMES } from '../services/theme.service';
+import { environment } from '../../environments/environment';
 
 interface BackendUser {
-  username: string;
+  id: number;
+  name: string;
+  email: string;
   salary: number;
-  expensesCount: number;
-  totalSpent: number;
+  expenses_count: number;
+  expenses_sum_amount: number;
+  is_admin: boolean;
 }
 
 interface NewUser {
@@ -35,7 +39,7 @@ export class DashboardComponent implements OnInit {
 
   themes: Theme[] = THEMES;
   showThemeSelector = false;
-  
+
   // Admin login
   adminUsername = '';
   adminPassword = '';
@@ -45,7 +49,7 @@ export class DashboardComponent implements OnInit {
 
   // CRUD
   newUser: NewUser = { username: '', password: '', email: '', salary: 0 };
-  editUserUsername = '';
+  editUserId = 0;
   editUserSalary = 0;
   editUserEmail = '';
   showNewUserForm = false;
@@ -53,13 +57,14 @@ export class DashboardComponent implements OnInit {
 
   allUsers: BackendUser[] = [];
   totalUsers = 0;
-  dataFileSize = 0;
   rawData: any = null;
   serverStatus = 'loading';
   loggedInUserSalary = 0;
   isLoggedIn = false;
   showStats = false;
   showRaw = false;
+
+  private readonly API_BASE = environment.apiBaseUrl;
 
   ngOnInit() {
     this.isLoggedIn = this.budgetService.isLoggedIn();
@@ -70,16 +75,22 @@ export class DashboardComponent implements OnInit {
 
   private async loadBackendData() {
     try {
-      const response = await this.http.get<any>('http://localhost:3000/api/admin/users').toPromise();
-      this.allUsers = Object.entries(response.users || {}).map(([username, user]: [string, any]) => ({
-        username,
-        salary: user.salary || 0,
-        expensesCount: (user.expenses || []).length,
-        totalSpent: (user.expenses || []).reduce((sum: number, e: any) => sum + (e.amount || 0), 0)
-      }));
-      this.totalUsers = response.totalUsers || 0;
-      this.dataFileSize = response.dataFileSize || 0;
-      this.serverStatus = 'online';
+      const response = await this.http.get<any>(`${this.API_BASE}/admin/users`).toPromise();
+      if (response && response.success) {
+        this.allUsers = (response.users || []).map((user: any) => ({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          salary: user.salary || 0,
+          expenses_count: user.expenses_count || 0,
+          expenses_sum_amount: user.expenses_sum_amount || 0,
+          is_admin: user.is_admin || false,
+        }));
+        this.totalUsers = response.totalUsers || 0;
+        this.serverStatus = 'online';
+      } else {
+        this.serverStatus = 'offline';
+      }
     } catch (error) {
       this.serverStatus = 'offline';
       console.error('Admin data load error:', error);
@@ -94,14 +105,14 @@ export class DashboardComponent implements OnInit {
   }
 
   checkServerStatus() {
-    this.http.get('http://localhost:3000/api/ping').subscribe({
+    this.http.get(`${this.API_BASE}/admin/stats`).subscribe({
       next: () => this.serverStatus = 'online',
       error: () => this.serverStatus = 'offline'
     });
   }
 
   loadRawData() {
-    this.http.get('http://localhost:3000/api/admin/raw').subscribe({
+    this.http.get(`${this.API_BASE}/admin/users`).subscribe({
       next: (data) => this.rawData = data,
       error: (err) => console.error('Raw data error:', err)
     });
@@ -123,7 +134,7 @@ export class DashboardComponent implements OnInit {
 
   adminLogin(): void {
     this.loginError = '';
-    this.http.post<any>('http://localhost:3000/api/login', { username: this.adminUsername, password: this.adminPassword }).subscribe({
+    this.http.post<any>(`${this.API_BASE}/login`, { username: this.adminUsername, password: this.adminPassword }).subscribe({
       next: (res) => {
         if (res.success) {
           this.showLoginForm = false;
@@ -140,7 +151,7 @@ export class DashboardComponent implements OnInit {
   }
 
   createUser(): void {
-    this.http.post('http://localhost:3000/api/admin/user', this.newUser).subscribe({
+    this.http.post(`${this.API_BASE}/admin/users`, this.newUser).subscribe({
       next: () => {
         this.newUser = { username: '', password: '', email: '', salary: 0 };
         this.showNewUserForm = false;
@@ -151,15 +162,15 @@ export class DashboardComponent implements OnInit {
   }
 
   editUser(user: BackendUser): void {
-    this.editUserUsername = user.username;
+    this.editUserId = user.id;
     this.editUserSalary = user.salary;
-    this.editUserEmail = '';
+    this.editUserEmail = user.email;
     this.showEditForm = true;
   }
 
   updateUser(): void {
     const updates = { salary: this.editUserSalary, email: this.editUserEmail };
-    this.http.put(`http://localhost:3000/api/admin/user/${this.editUserUsername}`, updates).subscribe({
+    this.http.put(`${this.API_BASE}/admin/users/${this.editUserId}`, updates).subscribe({
       next: () => {
         this.showEditForm = false;
         this.loadBackendData();
@@ -168,9 +179,10 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  deleteUser(username: string): void {
-    if (confirm(`Biztosan törölni szeretnéd a felhasználót: ${username}?`)) {
-      this.http.delete(`http://localhost:3000/api/admin/user/${username}`).subscribe({
+  deleteUser(userId: number): void {
+    const user = this.allUsers.find(u => u.id === userId);
+    if (confirm(`Biztosan törölni szeretnéd a felhasználót: ${user?.name}?`)) {
+      this.http.delete(`${this.API_BASE}/admin/users/${userId}`).subscribe({
         next: () => this.loadBackendData(),
         error: (err) => console.error('Delete user error', err)
       });

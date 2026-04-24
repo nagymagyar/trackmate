@@ -1,34 +1,32 @@
-# TrackMate Edit Expense Feature Implementation Plan
+# TODO - Laravel + MySQL + Super Admin
 
-## Status: ✅ In Progress
+## Laravel Backend
+- [x] 1. Update `bootstrap/app.php` - API routing bekötése
+- [x] 2. Create `routes/api.php` - API végpontok
+- [x] 3. Update `config/auth.php` - sanctum guard API-hoz
+- [x] 4. Update `AuthController.php` - me() végpont
+- [x] 5. Create `UserController.php`
+- [x] 6. Create `ExpenseController.php`
+- [x] 7. Create `FixedDeductionController.php`
+- [x] 8. Create `NotificationController.php`
+- [x] 9. Create `AdminController.php`
+- [x] 10. Update `DatabaseSeeder.php` - super admin
+- [x] 11. Create `AdminMiddleware.php`
 
-## Step 1: Create TODO.md [COMPLETED]
+## Angular Frontend
+- [x] 12. Update `environment.ts` - Laravel API URL
+- [x] 13. Update `user.model.ts` - token, is_admin mezők
+- [x] 14. Create `auth.interceptor.ts`
+- [x] 15. Update `app.config.ts` - auth interceptor bekötés
+- [x] 16. Update `budget.service.ts` - token + Laravel API
+- [x] 17. Update `auth.guard.ts` - token ellenőrzés + adminGuard
+- [x] 18. Update `dashboard.ts` + `dashboard.html` - admin végpontok
+- [x] 19. Update `calendar-calculator.ts` - ping endpoint
+- [x] 20. Update `app.routes.ts` - adminGuard
 
-## Step 2: Update calendar-calculator.ts ✅ COMPLETED
+## Telepítés (kézi lépések)
+- [ ] 21. `.env` MySQL konfigurálása
+- [ ] 22. `php artisan migrate --seed`
+- [ ] 23. Laravel szerver indítása
+- [ ] 24. Angular frontend indítása
 
-## Step 3: Update calendar-calculator.html ✅ COMPLETED
-
-## Step 4: Update budget.service.ts ✅ COMPLETED (frontend direct + service ready)
-
-## Step 5: Update server/index.js
-- [ ] Add PUT endpoint /api/user/:userId/expense/:expIndex
-- [ ] Implement update handler
-
-## Step 6: Test Implementation
-- [ ] Test add → edit → save flow
-- [ ] Test edit → cancel
-- [ ] Test delete during edit
-- [ ] Verify backend data.json updates
-- [ ] Attempt completion
-
-## Step 6: Test Implementation [IN PROGRESS]
-
-✅ Frontend edit UI + logic complete
-✅ Backend PUT endpoint added  
-✅ Data persistence via saveUserData()
-
-To test:
-1. `ng serve` (if not running)
-2. `node server/index.js` (if not running) 
-3. Login → Calendar → Add expense → Open day editor → Edit amount/desc → Verify save
-4. Check server/data.json confirms update

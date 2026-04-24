@@ -1,22 +1,7 @@
 import { Injectable, signal, effect } from '@angular/core';
+import type { Theme } from '../models/theme.model';
 
-export interface Theme {
-    name: string;
-    icon: string;
-    primaryColor: string;
-    secondaryColor: string;
-    background: string;
-    backgroundGradient: string;
-    cardBg: string;
-    textColor: string;
-    textSecondary: string;
-    borderColor: string;
-    success: string;
-    warning: string;
-    danger: string;
-    inputBg: string;
-    isDark: boolean;
-}
+export type { Theme } from '../models/theme.model';
 
 export const THEMES: Theme[] = [
     // Dark Theme - Kékes-lila (alapértelmezett)

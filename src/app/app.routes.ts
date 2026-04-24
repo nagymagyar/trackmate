@@ -3,14 +3,13 @@ import { WelcomeComponent } from './welcome/welcome';
 import { LoginComponent } from './login/login';
 import { TrackyComponent } from './calendar-calculator/calendar-calculator';
 import { DashboardComponent } from './dashboard/dashboard';
-import { autoLoginGuard } from './services/auth.guard';
-
+import { autoLoginGuard, adminGuard } from './services/auth.guard';
 
 export const routes: Routes = [
     { path: '', component: WelcomeComponent },
     { path: 'login', component: LoginComponent },
-{ path: 'main', component: TrackyComponent, canActivate: [autoLoginGuard] },
-{ path: 'admin', component: DashboardComponent },
+    { path: 'main', component: TrackyComponent, canActivate: [autoLoginGuard] },
+    { path: 'admin', component: DashboardComponent, canActivate: [adminGuard] },
     { path: '**', component: WelcomeComponent }
-
 ];
+

@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { BudgetService, Expense } from '../services/budget.service';
 import { ThemeService, Theme, THEMES } from '../services/theme.service';
+import { environment } from '../../environments/environment';
 
 export interface ExpenseCategory {
     name: string;
@@ -93,7 +94,7 @@ export class TrackyComponent implements OnInit {
     async checkServerStatus(): Promise<void> {
         this.serverStatus = 'checking';
         try {
-            const response = await fetch('http://localhost:3000/api/ping', {
+            const response = await fetch(`${environment.apiBaseUrl}/ping`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });

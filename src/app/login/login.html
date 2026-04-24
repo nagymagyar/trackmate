@@ -20,7 +20,7 @@
     <div *ngIf="showAuthForm" class="auth-card animate-slide-up">
         <div class="auth-header">
             <div class="logo">💰</div>
-<h1>Tracky</h1>
+            <h1>Tracky</h1>
             <p class="auth-subtitle">
                 {{ isLoginMode ? 'Jelentkezz be a fiókodba' : 'Hozz létre egy új fiókot' }}
             </p>
@@ -156,9 +156,31 @@
 
             <div class="deduction-list">
                 <div *ngFor="let d of fixedDeductions; let i = index" class="deduction-item">
-                    <span>{{ d.name }}</span>
-                    <span class="amount">{{ d.amount | number }} Ft</span>
-                    <button (click)="removeDeduction(i)" class="btn-remove">✕</button>
+                    <!-- Edit mode -->
+                    <ng-container *ngIf="editingDeductionIndex === i">
+                        <input 
+                            type="text" 
+                            [(ngModel)]="editDeductionName" 
+                            class="input-small"
+                            placeholder="Név"
+                        >
+                        <input 
+                            type="number" 
+                            [(ngModel)]="editDeductionAmount" 
+                            class="input-small"
+                            placeholder="Összeg"
+                        >
+                        <button (click)="saveEditDeduction()" class="btn-save-small" title="Mentés">✅</button>
+                        <button (click)="cancelEditDeduction()" class="btn-cancel-small" title="Mégse">❌</button>
+                    </ng-container>
+                    
+                    <!-- Normal view -->
+                    <ng-container *ngIf="editingDeductionIndex !== i">
+                        <span>{{ d.name }}</span>
+                        <span class="amount">{{ d.amount | number }} Ft</span>
+                        <button (click)="startEditDeduction(i)" class="btn-edit-small" title="Szerkesztés">✏️</button>
+                        <button (click)="removeDeduction(i)" class="btn-remove">✕</button>
+                    </ng-container>
                 </div>
             </div>
         </div>
@@ -224,3 +246,4 @@
         </button>
     </div>
 </div>
+

@@ -44,6 +44,11 @@ export class LoginComponent {
     deductionName: string = '';
     deductionAmount: number = 0;
     fixedDeductions: FixedDeduction[] = [];
+    
+    // Edit deduction
+    editingDeductionIndex: number = -1;
+    editDeductionName: string = '';
+    editDeductionAmount: number = 0;
 
     // Notifications
     notificationName: string = '';
@@ -116,7 +121,7 @@ export class LoginComponent {
                 },
                 error: (err) => {
                     this.isLoading = false;
-                    this.errorMessage = 'Hiba a szerverrel való kommunikációban!';
+                    this.errorMessage = err?.message || 'Hiba a szerverrel való kommunikációban!';
                     console.error(err);
                 }
             });
@@ -128,13 +133,15 @@ export class LoginComponent {
                         this.showAuthForm = false;
                         this.showSettings = true;
                         this.successMessage = 'Sikeres regisztráció!';
+                        // Load empty data for new user
+                        this.loadUserData();
                     } else {
                         this.errorMessage = response.message || 'Regisztráció sikertelen!';
                     }
                 },
                 error: (err) => {
                     this.isLoading = false;
-                    this.errorMessage = 'Hiba a szerverrel való kommunikációban!';
+                    this.errorMessage = err?.message || 'Hiba a szerverrel való kommunikációban!';
                     console.error(err);
                 }
             });
@@ -161,6 +168,30 @@ export class LoginComponent {
         this.fixedDeductions.push({ name, amount });
     }
 
+    // Edit deduction methods
+    startEditDeduction(index: number): void {
+        this.editingDeductionIndex = index;
+        const d = this.fixedDeductions[index];
+        this.editDeductionName = d.name;
+        this.editDeductionAmount = d.amount;
+    }
+
+    saveEditDeduction(): void {
+        if (this.editingDeductionIndex >= 0 && this.editDeductionName && this.editDeductionAmount > 0) {
+            this.fixedDeductions[this.editingDeductionIndex] = {
+                name: this.editDeductionName,
+                amount: this.editDeductionAmount
+            };
+            this.cancelEditDeduction();
+        }
+    }
+
+    cancelEditDeduction(): void {
+        this.editingDeductionIndex = -1;
+        this.editDeductionName = '';
+        this.editDeductionAmount = 0;
+    }
+
     addNotification(): void {
         if (this.notificationName && this.notificationAmount && this.notificationAmount > 0 && this.notificationDay) {
             const notification: Notification = {
@@ -185,7 +216,7 @@ export class LoginComponent {
         this.budgetService.updateSalary(this.salary);
         this.fixedDeductions.forEach(d => this.budgetService.addFixedDeduction(d));
         this.notifications.forEach(n => this.budgetService.addNotification(n));
-this.router.navigate(['/main']);
+        this.router.navigate(['/main']);
     }
 
     logout(): void {
@@ -198,6 +229,7 @@ this.router.navigate(['/main']);
         this.salary = 0;
         this.fixedDeductions = [];
         this.notifications = [];
+        this.editingDeductionIndex = -1;
     }
 
     goToWelcome(): void {
