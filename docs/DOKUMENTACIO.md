@@ -1,4 +1,4 @@
-# TrackMate – Költségvetés-kezelő Rendszer Dokumentáció
+# Tracky – Költségvetés-kezelő Rendszer Dokumentáció
 
 ## Technológiai összefoglaló
 
