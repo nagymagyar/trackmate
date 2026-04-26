@@ -111,6 +111,8 @@ export class LoginComponent {
             this.budgetService.login(this.username, this.password).subscribe({
                 next: (response: LoginResponse) => {
                     this.isLoading = false;
+                    console.log('[LoginComponent] Login response:', response);
+                    console.log('[LoginComponent] Token saved:', localStorage.getItem('auth_token') ? '✓ Yes' : '✗ No');
                     if (response.success) {
                         this.showAuthForm = false;
                         this.showSettings = true;
@@ -122,13 +124,15 @@ export class LoginComponent {
                 error: (err) => {
                     this.isLoading = false;
                     this.errorMessage = err?.message || 'Hiba a szerverrel való kommunikációban!';
-                    console.error(err);
+                    console.error('[LoginComponent] Login error:', err);
                 }
             });
         } else {
             this.budgetService.register(this.username, this.password, this.email || '').subscribe({
                 next: (response: LoginResponse) => {
                     this.isLoading = false;
+                    console.log('[LoginComponent] Registration response:', response);
+                    console.log('[LoginComponent] Token saved:', localStorage.getItem('auth_token') ? '✓ Yes' : '✗ No');
                     if (response.success) {
                         this.showAuthForm = false;
                         this.showSettings = true;
@@ -142,7 +146,7 @@ export class LoginComponent {
                 error: (err) => {
                     this.isLoading = false;
                     this.errorMessage = err?.message || 'Hiba a szerverrel való kommunikációban!';
-                    console.error(err);
+                    console.error('[LoginComponent] Registration error:', err);
                 }
             });
         }

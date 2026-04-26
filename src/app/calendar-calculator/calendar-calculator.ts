@@ -214,12 +214,16 @@ export class TrackyComponent implements OnInit {
                 amount: amount,
                 description: description || 'Költés'
             };
+            console.log('[Calendar] Adding expense:', expense);
+            console.log('[Calendar] Token present:', localStorage.getItem('auth_token') ? '✓ Yes' : '✗ No');
             this.budgetService.addExpense(expense).then(() => {
+                console.log('[Calendar] Expense added successfully');
                 this.expenseAmount = null;
                 this.expenseDescription = '';
                 this.selectedCategory = '';
                 this.generateCalendar();
             }).catch(err => {
+                console.error('[Calendar] Error adding expense:', err);
                 this.errorService.handleError(err, 'Hiba a költés hozzáadásakor');
             });
         }

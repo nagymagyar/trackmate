@@ -25,7 +25,16 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             message = error.error?.message || 'Hibás kérés';
             break;
           case 401:
+            const token = localStorage.getItem('auth_token');
             message = 'Nincs jogosultság a művelethez';
+            console.error('[ErrorService] 401 Unauthorized:', {
+              url: req.url,
+              method: req.method,
+              hasToken: !!token,
+              tokenLength: token?.length || 0,
+              errorMessage: error.error?.message,
+              fullError: error
+            });
             break;
           case 404:
             message = 'A kért erőforrás nem található';

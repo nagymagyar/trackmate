@@ -81,6 +81,11 @@ export class AdminComponent implements OnInit {
   showNewUserForm = false;
   showEditForm = false;
 
+  // Expense Editing
+  editingExpenseId = 0;
+  editingExpenseAmount = 0;
+  showEditExpenseForm = false;
+
   // Search & Sort
   searchTerm = '';
   expenseSearchTerm = '';
@@ -347,6 +352,107 @@ export class AdminComponent implements OnInit {
         error: (err) => console.error('Delete user error', err)
       });
     }
+  }
+
+  // Expense Management
+  deleteExpense(expenseId: number): void {
+    const expense = this.allExpenses.find(e => e.id === expenseId);
+    if (confirm(`Biztosan törölni szeretnéd ezt a költést: ${expense?.description}?`)) {
+      this.http.delete(`${this.API_BASE}/expenses/${expenseId}`).subscribe({
+        next: () => this.loadAllExpenses(),
+        error: (err) => console.error('Delete expense error', err)
+      });
+    }
+  }
+
+  editExpense(expense: UserExpense): void {
+    const newAmount = prompt(`Szerkesztés: ${expense.description}`, expense.amount.toString());
+    if (newAmount !== null && !isNaN(Number(newAmount))) {
+      this.http.put(`${this.API_BASE}/expenses/${expense.id}`, {
+        amount: Number(newAmount)
+      }).subscribe({
+        next: () => this.loadAllExpenses(),
+        error: (err) => console.error('Update expense error', err)
+      });
+    }
+  }
+
+  // User Salary & Email Management
+  updateUserSalary(userId: number, newSalary: number): void {
+    this.http.put(`${this.API_BASE}/admin/users/${userId}`, {
+      salary: newSalary
+    }).subscribe({
+      next: () => this.loadBackendData(),
+      error: (err) => console.error('Update salary error', err)
+    });
+  }
+
+  updateUserEmail(userId: number, newEmail: string): void {
+    if (!newEmail.includes('@')) {
+      alert('Érvényes email cím szükséges!');
+      return;
+    }
+    this.http.put(`${this.API_BASE}/admin/users/${userId}`, {
+      email: newEmail
+    }).subscribe({
+      next: () => this.loadBackendData(),
+      error: (err) => console.error('Update email error', err)
+    });
+  }
+
+  // Bulk Actions
+  deleteAllExpensesForUser(userId: number): void {
+    const user = this.allUsers.find(u => u.id === userId);
+    if (confirm(`Biztosan törölni szeretnéd az összes költést a(z) ${user?.name} felhasználónak?`)) {
+      this.allExpenses.filter(e => e.user_id === userId).forEach(expense => {
+        this.http.delete(`${this.API_BASE}/expenses/${expense.id}`).subscribe({
+          next: () => {},
+          error: (err) => console.error('Delete expense error', err)
+        });
+      });
+      setTimeout(() => this.loadAllExpenses(), 500);
+    }
+  }
+
+  resetUserData(userId: number): void {
+    const user = this.allUsers.find(u => u.id === userId);
+    if (confirm(`Biztosan szeretnéd a(z) ${user?.name} felhasználó összes adatát alaphelyzetbe állítani?`)) {
+      this.http.post(`${this.API_BASE}/admin/users/${userId}/reset`, {}).subscribe({
+        next: () => {
+          this.loadBackendData();
+          this.loadAllExpenses();
+          alert('Felhasználó adatai alaphelyzetbe állítva');
+        },
+        error: (err) => console.error('Reset user error', err)
+      });
+    }
+  }
+
+  // Export Data
+  exportUsersToCSV(): void {
+    let csv = 'ID,Felhasználónév,Email,Fizetés,Költések száma,Összes költés\n';
+    this.filteredUsers.forEach(user => {
+      csv += `${user.id},"${user.name}","${user.email}",${user.salary},${user.expenses_count},${user.expenses_sum_amount}\n`;
+    });
+    this.downloadCSV(csv, 'users.csv');
+  }
+
+  exportExpensesToCSV(): void {
+    let csv = 'ID,Felhasználó ID,Dátum,Összesg,Leírás\n';
+    this.filteredExpenses.forEach(expense => {
+      csv += `${expense.id},${expense.user_id},"${expense.date}",${expense.amount},"${expense.description}"\n`;
+    });
+    this.downloadCSV(csv, 'expenses.csv');
+  }
+
+  private downloadCSV(csv: string, filename: string): void {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
   }
 
   logout(): void {

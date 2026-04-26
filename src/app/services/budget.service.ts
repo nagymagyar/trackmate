@@ -226,10 +226,23 @@ export class BudgetService {
   // EXPENSES
   // =======================
   async addExpense(expense: Expense) {
-    await lastValueFrom(
-      this.http.post(`${this.API}/expenses`, expense)
-    );
-    await this.loadUserData();
+    const token = localStorage.getItem(this.tokenKey);
+    console.log('[BudgetService] addExpense - Token present:', !!token);
+    
+    if (!token) {
+      throw new Error('Nincs hitelesítés! Kérlek jelentkezz be újra.');
+    }
+
+    try {
+      await lastValueFrom(
+        this.http.post(`${this.API}/expenses`, expense)
+      );
+      console.log('[BudgetService] Expense added successfully');
+      await this.loadUserData();
+    } catch (error) {
+      console.error('[BudgetService] Error adding expense:', error);
+      throw error;
+    }
   }
 
   // =======================
