@@ -1,31 +1,67 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, from, lastValueFrom, throwError } from 'rxjs';
+import { Observable, lastValueFrom, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { ErrorService } from './error.service';
-import type {
-  FixedDeduction,
-  Notification,
-  Expense,
-  UserData,
-  LoginResponse
-} from '../models/user.model';
 
-// Re-export for backward compatibility with existing imports
-export type { FixedDeduction, Notification, Expense, UserData, LoginResponse };
+// =======================
+// MODELS (fix export hiba)
+// =======================
+export interface FixedDeduction {
+  id?: number;
+  name: string;
+  amount: number;
+}
+
+export interface Notification {
+  id?: number;
+  name: string;
+  amount: number;
+  day?: number;
+  recurring?: boolean;
+  message?: string;
+}
+
+export interface Expense {
+  id?: number;
+  description: string;
+  amount: number;
+  date: string;
+}
+
+export interface UserData {
+  salary: number;
+  fixedDeductions: FixedDeduction[];
+  notifications: Notification[];
+  expenses: Expense[];
+}
+
+export interface LoginResponse {
+  success: boolean;
+  userId?: string;
+  token?: string;
+  is_admin?: boolean;
+  message?: string;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class BudgetService {
-  private readonly http = inject(HttpClient);
-  private readonly errorService = inject(ErrorService);
 
-  private readonly API_BASE = environment.apiBaseUrl;
-  private readonly storageKey = 'budget_app_user';
-  private readonly tokenKey = 'auth_token';
+  private http = inject(HttpClient);
+  private errorService = inject(ErrorService);
 
+  private API = environment.apiBaseUrl;
+
+  private tokenKey = 'auth_token';
+  private userKey = 'budget_user';
+  private adminKey = 'is_admin';
+
+  // =======================
+  // STATE
+  // =======================
   userData = signal<UserData>({
     salary: 0,
     fixedDeductions: [],
@@ -33,81 +69,68 @@ export class BudgetService {
     expenses: []
   });
 
-  private currentUserId: string | null = null;
-  private authToken: string | null = null;
-  private isAdmin: boolean = false;
+  private userId: string | null = null;
+  private token: string | null = null;
+  private isAdmin = false;
 
   constructor() {
-    this.loadFromStorage();
+    this.loadStorage();
   }
 
-  // --- Session Management ---
-
-  private async loadFromStorage(): Promise<void> {
-    this.currentUserId = localStorage.getItem(this.storageKey);
-    this.authToken = localStorage.getItem(this.tokenKey);
-    const adminFlag = localStorage.getItem('is_admin');
-    this.isAdmin = adminFlag === 'true';
-    if (this.currentUserId && this.authToken) {
-      await this.loadUserData();
-    }
+  // =======================
+  // STORAGE
+  // =======================
+  private loadStorage() {
+    this.userId = localStorage.getItem(this.userKey);
+    this.token = localStorage.getItem(this.tokenKey);
+    this.isAdmin = localStorage.getItem(this.adminKey) === 'true';
   }
 
-  private saveUserId(userId: string): void {
-    localStorage.setItem(this.storageKey, userId);
-    this.currentUserId = userId;
-  }
-
-  private saveToken(token: string): void {
+  private saveAuth(userId: string, token: string, admin: boolean) {
+    localStorage.setItem(this.userKey, userId);
     localStorage.setItem(this.tokenKey, token);
-    this.authToken = token;
+    localStorage.setItem(this.adminKey, admin ? 'true' : 'false');
+
+    this.userId = userId;
+    this.token = token;
+    this.isAdmin = admin;
   }
 
-  private saveAdminFlag(isAdmin: boolean): void {
-    localStorage.setItem('is_admin', isAdmin ? 'true' : 'false');
-    this.isAdmin = isAdmin;
-  }
-
-  private clearUserId(): void {
-    localStorage.removeItem(this.storageKey);
+  private clearAuth() {
+    localStorage.removeItem(this.userKey);
     localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem('is_admin');
-    this.currentUserId = null;
-    this.authToken = null;
+    localStorage.removeItem(this.adminKey);
+
+    this.userId = null;
+    this.token = null;
     this.isAdmin = false;
   }
 
+  // =======================
+  // AUTH HELPERS (FIXED)
+  // =======================
   isLoggedIn(): boolean {
-    return this.currentUserId !== null && this.authToken !== null;
+    return !!this.token;
   }
 
   isAdminUser(): boolean {
     return this.isAdmin;
   }
 
-  getCurrentUserId(): string | null {
-    return this.currentUserId;
-  }
-
-  getAuthToken(): string | null {
-    return this.authToken;
+  getToken(): string | null {
+    return this.token;
   }
 
   logout(): void {
-    // Call backend logout if token exists
-    if (this.authToken) {
-      this.http.post(`${this.API_BASE}/logout`, {}).subscribe({
-        error: () => { /* ignore */ }
-      });
-    }
-
-    this.userData.set({
-      salary: 0,
-      fixedDeductions: [],
-      notifications: [],
-      expenses: []
+    this.http.post(`${this.API}/logout`, {}).subscribe({
+      complete: () => this.completeLogout()
     });
-    this.clearUserId();
+  }
+
+  private completeLogout(): void {
+    this.clearAuth();
+    this.clearAllData();
+    window.location.href = '/login';
   }
 
   clearAllData(): void {
@@ -119,375 +142,166 @@ export class BudgetService {
     });
   }
 
-  // --- Auth ---
+  async refreshToken(): Promise<boolean> {
+    if (!this.token) return false;
 
-  private apiLogin(username: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.API_BASE}/login`, { username, password });
+    try {
+      const response = await lastValueFrom(
+        this.http.post<any>(`${this.API}/refresh`, {})
+      );
+      if (response?.token) {
+        localStorage.setItem(this.tokenKey, response.token);
+        this.token = response.token;
+        return true;
+      }
+      return false;
+    } catch (err) {
+      this.errorService.handleError(err, 'Token refresh sikertelen');
+      return false;
+    }
   }
 
+  // =======================
+  // AUTH API
+  // =======================
   login(username: string, password: string): Observable<LoginResponse> {
-    return this.apiLogin(username, password).pipe(
-      tap(response => {
-        if (response.success) {
-          this.saveUserId(response.userId!);
-          this.saveToken(response.token!);
-          this.saveAdminFlag(response.is_admin || false);
-          this.loadUserData();
+    return this.http.post<LoginResponse>(`${this.API}/login`, { username, password }).pipe(
+      tap(res => {
+        if (res.success && res.token && res.userId) {
+          this.saveAuth(res.userId, res.token, res.is_admin ?? false);
         }
       }),
       catchError(err => {
-        this.errorService.handleError(err, 'Bejelentkezési hiba');
+        this.errorService.handleError(err, 'Login hiba');
         return throwError(() => err);
       })
     );
-  }
-
-  private apiRegister(username: string, password: string, email?: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.API_BASE}/register`, { username, password, email });
   }
 
   register(username: string, password: string, email?: string): Observable<LoginResponse> {
-    return this.apiRegister(username, password, email).pipe(
-      tap(response => {
-        if (response.success) {
-          this.saveUserId(response.userId!);
-          this.saveToken(response.token!);
-          this.saveAdminFlag(response.is_admin || false);
+    return this.http.post<LoginResponse>(`${this.API}/register`, {
+      username,
+      password,
+      email
+    }).pipe(
+      tap(res => {
+        if (res.success && res.token && res.userId) {
+          this.saveAuth(res.userId, res.token, res.is_admin ?? false);
         }
       }),
       catchError(err => {
-        this.errorService.handleError(err, 'Regisztrációs hiba');
+        this.errorService.handleError(err, 'Register hiba');
         return throwError(() => err);
       })
     );
   }
 
-  // --- Data Persistence ---
+  // =======================
+  // USER DATA
+  // =======================
+  async loadUserData() {
+    if (!this.token) return;
 
-  async loadUserData(): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
+    const data = await lastValueFrom(
+      this.http.get<any>(`${this.API}/user`)
+    );
 
-    try {
-      const data = await lastValueFrom(
-        this.http.get<any>(`${this.API_BASE}/user`).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Adatok betöltési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-
-      if (data && data.success) {
-        this.userData.set({
-          salary: data.salary || 0,
-          fixedDeductions: data.fixedDeductions || [],
-          notifications: data.notifications || [],
-          expenses: data.expenses || []
-        });
-        this.checkAndResetMonthlyExpenses();
-      }
-    } catch {
-      // Error already handled by interceptor + error service
-    }
+    this.userData.set({
+      salary: data.salary ?? 0,
+      fixedDeductions: data.fixedDeductions ?? [],
+      notifications: data.notifications ?? [],
+      expenses: data.expenses ?? []
+    });
   }
 
-  async saveUserData(): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
+  async saveUserData() {
+    if (!this.token) return;
 
-    try {
-      await lastValueFrom(
-        this.http.post(`${this.API_BASE}/user`, this.userData()).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Adatok mentési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-    } catch {
-      // Error already handled
-    }
+    await lastValueFrom(
+      this.http.post(`${this.API}/user`, this.userData())
+    );
   }
 
-  async updateExpense(expenseId: number, updatedExpense: Expense): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
-
-    try {
-      await lastValueFrom(
-        this.http.put(`${this.API_BASE}/expenses/${expenseId}`, updatedExpense).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Költés frissítési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-    } catch {
-      // Error already handled
-    }
+  // =======================
+  // EXPENSES
+  // =======================
+  async addExpense(expense: Expense) {
+    await lastValueFrom(
+      this.http.post(`${this.API}/expenses`, expense)
+    );
+    await this.loadUserData();
   }
 
-  // --- CRUD Operations ---
+  // =======================
+  // SALARY
+  // =======================
+  async updateSalary(salary: number) {
+    await lastValueFrom(
+      this.http.post(`${this.API}/user/salary`, { salary })
+    );
 
-  async addExpense(expense: Expense): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
-
-    try {
-      const response = await lastValueFrom(
-        this.http.post<any>(`${this.API_BASE}/expenses`, expense).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Költés rögzítési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-      if (response.success && response.expense) {
-        const current = this.userData();
-        this.userData.set({
-          ...current,
-          expenses: [...current.expenses, response.expense]
-        });
-      }
-      this.errorService.handleSuccess('Költés rögzítve');
-    } catch {
-      // Error already handled
-    }
+    this.userData.update(u => ({ ...u, salary }));
   }
 
-  async updateSalary(salary: number): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
-
-    try {
-      await lastValueFrom(
-        this.http.post(`${this.API_BASE}/user/salary`, { salary }).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Fizetés frissítési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-      const current = this.userData();
-      this.userData.set({ ...current, salary });
-    } catch {
-      // Error already handled
-    }
-  }
-
-  async addFixedDeduction(deduction: FixedDeduction): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
-
-    try {
-      const response = await lastValueFrom(
-        this.http.post<any>(`${this.API_BASE}/deductions`, deduction).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Fix kiadás rögzítési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-      if (response.success && response.deduction) {
-        const current = this.userData();
-        this.userData.set({
-          ...current,
-          fixedDeductions: [...current.fixedDeductions, response.deduction]
-        });
-      }
-    } catch {
-      // Error already handled
-    }
-  }
-
-  async updateFixedDeduction(id: number, updated: FixedDeduction): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
-
-    try {
-      await lastValueFrom(
-        this.http.put(`${this.API_BASE}/deductions/${id}`, updated).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Fix kiadás frissítési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-      const current = this.userData();
-      const deductions = [...current.fixedDeductions];
-      const index = deductions.findIndex(d => d.id === id);
-      if (index >= 0) {
-        deductions[index] = updated;
-        this.userData.set({ ...current, fixedDeductions: deductions });
-      }
-      this.errorService.handleSuccess('Fix kiadás frissítve');
-    } catch {
-      // Error already handled
-    }
-  }
-
-  async addNotification(notification: Notification): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
-
-    try {
-      const response = await lastValueFrom(
-        this.http.post<any>(`${this.API_BASE}/notifications`, notification).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Értesítés rögzítési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-      if (response.success && response.notification) {
-        const current = this.userData();
-        this.userData.set({
-          ...current,
-          notifications: [...current.notifications, response.notification]
-        });
-      }
-    } catch {
-      // Error already handled
-    }
-  }
-
-  async removeFixedDeduction(id: number): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
-
-    try {
-      await lastValueFrom(
-        this.http.delete(`${this.API_BASE}/deductions/${id}`).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Fix kiadás törlési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-      const current = this.userData();
-      this.userData.set({
-        ...current,
-        fixedDeductions: current.fixedDeductions.filter(d => d.id !== id)
-      });
-    } catch {
-      // Error already handled
-    }
-  }
-
-  async removeNotification(id: number): Promise<void> {
-    if (!this.currentUserId || !this.authToken) return;
-
-    try {
-      await lastValueFrom(
-        this.http.delete(`${this.API_BASE}/notifications/${id}`).pipe(
-          catchError(err => {
-            this.errorService.handleError(err, 'Értesítés törlési hiba');
-            return throwError(() => err);
-          })
-        )
-      );
-      const current = this.userData();
-      this.userData.set({
-        ...current,
-        notifications: current.notifications.filter(n => n.id !== id)
-      });
-    } catch {
-      // Error already handled
-    }
-  }
-
-  // --- Monthly Reset ---
-
-  public async checkAndResetMonthlyExpenses(): Promise<void> {
-    if (!this.currentUserId) return;
-
-    const currentMonthKey = this.getMonthKey();
-    const lastMonthKey = localStorage.getItem(`budget_app_last_month_${this.currentUserId}`);
-
-    if (lastMonthKey !== currentMonthKey) {
-      const current = this.userData();
-      // Only reset expenses locally, backend keeps history
-      this.userData.set({
-        ...current,
-        expenses: []
-      });
-      localStorage.setItem(`budget_app_last_month_${this.currentUserId}`, currentMonthKey);
-      await this.saveUserData();
-      this.errorService.handleSuccess('Új hónap! Költések nullázva.');
-    }
-  }
-
-  private getMonthKey(): string {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  }
-
-  // --- Business Logic / Calculations ---
-
+  // =======================
+  // FIXED CALC FUNCTIONS (PUBLIC FIX)
+  // =======================
   getTotalFixedDeductions(): number {
-    return this.userData().fixedDeductions.reduce((sum, d) => sum + d.amount, 0);
-  }
-
-  getDailyBudget(): number {
-    const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysRemaining = daysInMonth - now.getDate() + 1;
-
-    const salary = this.userData().salary;
-    const fixedDeductions = this.getTotalFixedDeductions();
-    const spent = this.getSpentThisMonth();
-
-    const available = salary - fixedDeductions - spent;
-    return Math.max(0, available / daysRemaining);
-  }
-
-  private parseDate(dateStr: string): Date {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      return new Date(year, month, day);
-    }
-    return new Date(dateStr);
+    return this.userData().fixedDeductions
+      .reduce((sum, d) => sum + d.amount, 0);
   }
 
   getSpentThisMonth(): number {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
     return this.userData().expenses
-      .filter(e => {
-        const expDate = this.parseDate(e.date);
-        return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
-      })
       .reduce((sum, e) => sum + e.amount, 0);
+  }
+
+  getDailyBudget(): number {
+    const salary = this.userData().salary;
+    const fixed = this.getTotalFixedDeductions();
+    const spent = this.getSpentThisMonth();
+
+    const days = 30;
+    return Math.max(0, (salary - fixed - spent) / days);
   }
 
   getWeeklyLimitStatus(): { warning: boolean; exceeded: boolean; message: string } {
-    const weekLimit = this.getDailyBudget() * 7;
-    const spentThisWeek = this.getSpentThisWeek();
-    const percentage = weekLimit > 0 ? (spentThisWeek / weekLimit) * 100 : 0;
+    const limit = this.getDailyBudget() * 7;
+    const spent = this.getSpentThisMonth();
 
-    if (percentage >= 100) {
-      return { warning: true, exceeded: true, message: '⚠️ Heti limit túllépve!' };
-    } else if (percentage >= 70) {
-      return { warning: true, exceeded: false, message: '⚠️ Heti limit közelében!' };
+    if (spent > limit) {
+      return { warning: true, exceeded: true, message: 'Túllépted a heti keretet!' };
     }
+
+    if (spent > limit * 0.7) {
+      return { warning: true, exceeded: false, message: 'Közel a heti limit!' };
+    }
+
     return { warning: false, exceeded: false, message: '' };
   }
 
-  getSpentThisWeek(): number {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - dayOfWeek);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    return this.userData().expenses
-      .filter(e => {
-        const expDate = this.parseDate(e.date);
-        return expDate >= startOfWeek;
-      })
-      .reduce((sum, e) => sum + e.amount, 0);
+  getTodaysNotifications(): Notification[] {
+    const day = new Date().getDate();
+    return this.userData().notifications.filter(n => n.day === day);
   }
 
-  getTodaysNotifications(): Notification[] {
-    const today = new Date().getDate();
-    return this.userData().notifications.filter(n => n.day === today);
+  // =======================
+  // FIXED DEDUCTIONS
+  // =======================
+  async addFixedDeduction(deduction: FixedDeduction) {
+    await lastValueFrom(
+      this.http.post(`${this.API}/deductions`, deduction)
+    );
+    await this.loadUserData();
+  }
+
+  // =======================
+  // NOTIFICATIONS
+  // =======================
+  async addNotification(notification: Notification) {
+    await lastValueFrom(
+      this.http.post(`${this.API}/notifications`, notification)
+    );
+    await this.loadUserData();
   }
 }
-

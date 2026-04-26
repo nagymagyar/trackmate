@@ -211,12 +211,30 @@ export class LoginComponent {
         this.notifications.splice(index, 1);
     }
 
-    saveAndContinue(): void {
-        this.budgetService.clearAllData();
-        this.budgetService.updateSalary(this.salary);
-        this.fixedDeductions.forEach(d => this.budgetService.addFixedDeduction(d));
-        this.notifications.forEach(n => this.budgetService.addNotification(n));
-        this.router.navigate(['/main']);
+    async saveAndContinue(): Promise<void> {
+        try {
+            this.budgetService.clearAllData();
+            
+            // Update salary first
+            if (this.salary > 0) {
+                await this.budgetService.updateSalary(this.salary);
+            }
+
+            // Add all fixed deductions
+            for (const deduction of this.fixedDeductions) {
+                await this.budgetService.addFixedDeduction(deduction);
+            }
+
+            // Add all notifications
+            for (const notification of this.notifications) {
+                await this.budgetService.addNotification(notification);
+            }
+
+            this.router.navigate(['/main']);
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            this.errorMessage = 'Hiba a beállítások mentésekor!';
+        }
     }
 
     logout(): void {
@@ -244,7 +262,7 @@ export class LoginComponent {
         return this.salary - this.getTotalDeductions();
     }
 
-    getNotificationDayText(day: number): string {
-        return `${day}. napján`;
+    getNotificationDayText(day: number | undefined): string {
+        return day ? `${day}. napján` : '';
     }
 }

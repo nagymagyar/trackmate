@@ -9,9 +9,10 @@ import { environment } from '../../environments/environment';
 export class AuthService {
   private http = inject(HttpClient);
   private readonly API_BASE = environment.apiBaseUrl;
+  private tokenKey = 'auth_token';
 
   async checkAdmin(): Promise<boolean> {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem(this.tokenKey);
     if (!token) return false;
 
     try {
@@ -25,17 +26,36 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    return localStorage.getItem('auth_token') !== null;
+    return localStorage.getItem(this.tokenKey) !== null;
   }
 
   getToken(): string | null {
-    return localStorage.getItem('auth_token');
+    return localStorage.getItem(this.tokenKey);
+  }
+
+  setToken(token: string): void {
+    localStorage.setItem(this.tokenKey, token);
+  }
+
+  async refreshToken(): Promise<boolean> {
+    try {
+      const response = await lastValueFrom(
+        this.http.post<any>(`${this.API_BASE}/refresh`, {})
+      );
+      if (response?.token) {
+        this.setToken(response.token);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   logout(): void {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem(this.tokenKey);
     localStorage.removeItem('is_admin');
-    window.location.reload();
+    window.location.href = '/login';
   }
 }
 

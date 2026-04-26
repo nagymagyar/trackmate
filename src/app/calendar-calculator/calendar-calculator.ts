@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Router } from '@angular/router';
 import { BudgetService, Expense } from '../services/budget.service';
+import { ErrorService } from '../services/error.service';
 import { ThemeService, Theme, THEMES } from '../services/theme.service';
 import { environment } from '../../environments/environment';
 
@@ -35,6 +36,7 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
 })
 export class TrackyComponent implements OnInit {
     private budgetService = inject(BudgetService);
+    private errorService = inject(ErrorService);
     private themeService = inject(ThemeService);
     private router = inject(Router);
 
@@ -81,6 +83,9 @@ export class TrackyComponent implements OnInit {
             return;
         }
 
+        // Load fresh data from backend
+        this.loadInitialData();
+
         // Monthly reset via API load/save handled in service
 
         this.selectedDate = this.formatDate(new Date());
@@ -88,6 +93,15 @@ export class TrackyComponent implements OnInit {
 
         // Check server status
         this.checkServerStatus();
+    }
+
+    private async loadInitialData(): Promise<void> {
+        try {
+            await this.budgetService.loadUserData();
+        } catch (error) {
+            console.error('Error loading initial data:', error);
+            this.errorService?.handleError(error, 'Adatok betöltési hiba');
+        }
     }
 
     // Check if backend server is running
@@ -200,10 +214,14 @@ export class TrackyComponent implements OnInit {
                 amount: amount,
                 description: description || 'Költés'
             };
-            this.budgetService.addExpense(expense);
-            this.expenseAmount = null;
-            this.expenseDescription = '';
-            this.selectedCategory = '';
+            this.budgetService.addExpense(expense).then(() => {
+                this.expenseAmount = null;
+                this.expenseDescription = '';
+                this.selectedCategory = '';
+                this.generateCalendar();
+            }).catch(err => {
+                this.errorService.handleError(err, 'Hiba a költés hozzáadásakor');
+            });
         }
     }
 
@@ -302,10 +320,14 @@ export class TrackyComponent implements OnInit {
                 amount: amount,
                 description: description || 'Költés'
             };
-            this.budgetService.addExpense(expense);
-            this.expenseAmount = null;
-            this.expenseDescription = '';
-            this.selectedCategory = '';
+            this.budgetService.addExpense(expense).then(() => {
+                this.expenseAmount = null;
+                this.expenseDescription = '';
+                this.selectedCategory = '';
+                this.generateCalendar();
+            }).catch(err => {
+                this.errorService.handleError(err, 'Hiba a költés hozzáadásakor');
+            });
         }
     }
 

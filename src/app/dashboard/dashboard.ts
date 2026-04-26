@@ -39,7 +39,19 @@ export class DashboardComponent implements OnInit {
       this.router.navigate(['/login']);
       return;
     }
-    this.loadData();
+    this.loadDataFromServer();
+  }
+
+  async loadDataFromServer(): Promise<void> {
+    try {
+      // Load fresh data from backend
+      await this.budgetService.loadUserData();
+      this.loadData();
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      // Fall back to local data
+      this.loadData();
+    }
   }
 
   loadData(): void {
