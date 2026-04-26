@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ThemeService, Theme, THEMES } from '../services/theme.service';
+import { BudgetService } from '../services/budget.service';
 
 @Component({
     selector: 'app-welcome',
@@ -13,9 +14,18 @@ import { ThemeService, Theme, THEMES } from '../services/theme.service';
 export class WelcomeComponent {
     private router = inject(Router);
     private themeService = inject(ThemeService);
+    private budgetService = inject(BudgetService);
 
     themes: Theme[] = THEMES;
     showThemeSelector: boolean = false;
+
+    get isLoggedIn(): boolean {
+        return this.budgetService.isLoggedIn();
+    }
+
+    get isAdmin(): boolean {
+        return this.budgetService.isAdminUser();
+    }
 
     toggleThemeSelector(): void {
         this.showThemeSelector = !this.showThemeSelector;
@@ -29,4 +39,17 @@ export class WelcomeComponent {
     goToLogin(): void {
         this.router.navigate(['/login']);
     }
+
+    goToMain(): void {
+        this.router.navigate(['/main']);
+    }
+
+    goToDashboard(): void {
+        this.router.navigate(['/dashboard']);
+    }
+
+    goToAdmin(): void {
+        window.open('http://localhost:4201', '_blank');
+    }
 }
+

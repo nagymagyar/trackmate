@@ -4,8 +4,13 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:admin": "ng serve admin-app",
+    "start:all": "concurrently \"npm:start\" \"npm:start:admin\"",
     "build": "ng build",
+    "build:admin": "ng build admin-app",
+    "build:all": "npm run build ; npm run build:admin",
     "watch": "ng build --watch --configuration development",
+    "watch:admin": "ng build admin-app --watch --configuration development",
     "test": "ng test"
   },
   "prettier": {
@@ -37,6 +42,7 @@
     "@angular/build": "^21.1.4",
     "@angular/cli": "^21.1.4",
     "@angular/compiler-cli": "^21.1.0",
+    "concurrently": "^9.2.1",
     "jsdom": "^27.1.0",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"

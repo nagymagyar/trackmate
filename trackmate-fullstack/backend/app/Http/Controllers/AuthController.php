@@ -31,6 +31,7 @@ class AuthController extends Controller
             'success' => true,
             'userId' => (string) $user->id,
             'token' => $token,
+            'is_admin' => $user->is_admin,
             'user' => $user,
         ]);
     }
@@ -57,6 +58,7 @@ class AuthController extends Controller
             'success' => true,
             'userId' => (string) $user->id,
             'token' => $token,
+            'is_admin' => $user->is_admin,
             'user' => $user,
         ]);
     }

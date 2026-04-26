@@ -1,0 +1,400 @@
+<div class="admin-app" [class.light-theme]="!isDarkTheme">
+
+  <!-- Login Screen -->
+  <div *ngIf="!isLoggedIn || !isAdmin" class="login-screen">
+    <div class="login-box">
+      <div class="login-logo">
+        <span class="logo-icon">🛡️</span>
+        <h1>Tracky Admin</h1>
+        <p>Rendszergazdai felület</p>
+      </div>
+      <form (ngSubmit)="adminLogin()" class="login-form">
+        <div class="input-group">
+          <label>Felhasználónév</label>
+          <input type="text" [(ngModel)]="adminUsername" name="adminUsername" placeholder="admin" required>
+        </div>
+        <div class="input-group">
+          <label>Jelszó</label>
+          <input type="password" [(ngModel)]="adminPassword" name="adminPassword" placeholder="••••••" required>
+        </div>
+        <div *ngIf="loginError" class="login-error">{{ loginError }}</div>
+        <button type="submit" class="login-btn">Bejelentkezés</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Admin Interface -->
+  <div *ngIf="isLoggedIn && isAdmin" class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" [class.collapsed]="sidebarCollapsed">
+      <div class="sidebar-header">
+        <span class="sidebar-logo">🛡️</span>
+        <span class="sidebar-title" *ngIf="!sidebarCollapsed">Tracky Admin</span>
+        <button class="sidebar-toggle" (click)="toggleSidebar()">☰</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="nav-item" [class.active]="activeSection === 'overview'" (click)="setSection('overview')">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Áttekintés</span>
+        </a>
+        <a class="nav-item" [class.active]="activeSection === 'users'" (click)="setSection('users')">
+          <span class="nav-icon">👥</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Felhasználók</span>
+        </a>
+        <a class="nav-item" [class.active]="activeSection === 'expenses'" (click)="setSection('expenses')">
+          <span class="nav-icon">💰</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Költések</span>
+        </a>
+        <a class="nav-item" [class.active]="activeSection === 'analytics'" (click)="setSection('analytics')">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Analitika</span>
+        </a>
+        <a class="nav-item" [class.active]="activeSection === 'settings'" (click)="setSection('settings')">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label" *ngIf="!sidebarCollapsed">Beállítások</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="theme-toggle" (click)="toggleTheme()">
+          <span>{{ isDarkTheme ? '☀️' : '🌙' }}</span>
+          <span *ngIf="!sidebarCollapsed">{{ isDarkTheme ? 'Világos mód' : 'Sötét mód' }}</span>
+        </button>
+        <button class="logout-btn" (click)="logout()">
+          <span>🚪</span>
+          <span *ngIf="!sidebarCollapsed">Kijelentkezés</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <h2>{{ getSectionTitle() }}</h2>
+        <div class="top-bar-actions">
+          <div class="status-pill" [class.online]="serverStatus === 'online'" [class.offline]="serverStatus === 'offline'">
+            <span class="status-dot"></span>
+            {{ serverStatus === 'online' ? 'Online' : (serverStatus === 'loading' ? 'Betöltés...' : 'Offline') }}
+          </div>
+        </div>
+      </header>
+
+      <!-- OVERVIEW SECTION -->
+      <section *ngIf="activeSection === 'overview'" class="content-section">
+        <div class="stats-row">
+          <div class="stat-box primary">
+            <div class="stat-box-icon">👥</div>
+            <div class="stat-box-info">
+              <span class="stat-box-value">{{ adminStats?.totalUsers ?? totalUsers }}</span>
+              <span class="stat-box-label">Felhasználó</span>
+            </div>
+          </div>
+          <div class="stat-box success">
+            <div class="stat-box-icon">💰</div>
+            <div class="stat-box-info">
+              <span class="stat-box-value">{{ (adminStats?.totalSpent ?? getTotalSpent()) | number }} Ft</span>
+              <span class="stat-box-label">Összes költés</span>
+            </div>
+          </div>
+          <div class="stat-box warning">
+            <div class="stat-box-icon">📝</div>
+            <div class="stat-box-info">
+              <span class="stat-box-value">{{ adminStats?.totalExpenses ?? allExpenses.length }}</span>
+              <span class="stat-box-label">Tranzakció</span>
+            </div>
+          </div>
+          <div class="stat-box info">
+            <div class="stat-box-icon">📊</div>
+            <div class="stat-box-info">
+              <span class="stat-box-value">{{ getAverageSalary() | number }} Ft</span>
+              <span class="stat-box-label">Átlagfizetés</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <h3>🌟 Legaktívabb felhasználók</h3>
+            <div class="top-list">
+              <div class="top-item" *ngFor="let user of getTopSpenders(5); let i = index">
+                <span class="top-rank">#{{ i + 1 }}</span>
+                <span class="top-name">{{ user.name }}</span>
+                <span class="top-value">{{ user.expenses_sum_amount | number }} Ft</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <h3>🆕 Legújabb felhasználók</h3>
+            <div class="top-list">
+              <div class="top-item" *ngFor="let user of getRecentUsers(5); let i = index">
+                <span class="top-rank">#{{ i + 1 }}</span>
+                <span class="top-name">{{ user.name }}</span>
+                <span class="top-badge" [class.admin]="user.is_admin">{{ user.is_admin ? 'Admin' : 'User' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USERS SECTION -->
+      <section *ngIf="activeSection === 'users'" class="content-section">
+        <div class="section-toolbar">
+          <div class="search-field">
+            <span class="search-field-icon">🔍</span>
+            <input type="text" [(ngModel)]="searchTerm" placeholder="Keresés név vagy email alapján...">
+          </div>
+          <button class="action-btn primary" (click)="showNewUserForm = true">
+            <span>➕</span> Új felhasználó
+          </button>
+        </div>
+
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th (click)="setSort('name')" class="sortable">Név <span *ngIf="sortColumn === 'name'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span></th>
+                <th (click)="setSort('email')" class="sortable">Email <span *ngIf="sortColumn === 'email'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span></th>
+                <th (click)="setSort('salary')" class="sortable">Fizetés <span *ngIf="sortColumn === 'salary'">{{ sortDirection === 'asc' ? '▲' : '▼' }}</span></th>
+                <th>Költések</th>
+                <th>Összesen</th>
+                <th>Jogosultság</th>
+                <th>Műveletek</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let user of filteredUsers" (click)="openUserDetail(user)" class="clickable-row">
+                <td><strong>{{ user.name }}</strong></td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.salary | number }} Ft</td>
+                <td>{{ user.expenses_count }}</td>
+                <td>{{ user.expenses_sum_amount | number }} Ft</td>
+                <td>
+                  <span class="role-badge" [class.admin]="user.is_admin">{{ user.is_admin ? '👑 Admin' : '👤 User' }}</span>
+                </td>
+                <td>
+                  <button class="icon-btn edit" (click)="$event.stopPropagation(); editUser(user)" title="Szerkeszt">✏️</button>
+                  <button class="icon-btn delete" (click)="$event.stopPropagation(); deleteUser(user.id)" title="Töröl">🗑️</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-info" *ngIf="allUsers.length > 0">
+            <span>Összesen: {{ allUsers.length }} felhasználó</span>
+            <span *ngIf="searchTerm">Szűrve: {{ filteredUsers.length }} találat</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- EXPENSES SECTION -->
+      <section *ngIf="activeSection === 'expenses'" class="content-section">
+        <div class="section-toolbar">
+          <div class="search-field">
+            <span class="search-field-icon">🔍</span>
+            <input type="text" [(ngModel)]="expenseSearchTerm" placeholder="Keresés költés leírása alapján...">
+          </div>
+        </div>
+
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Felhasználó</th>
+                <th>Dátum</th>
+                <th>Leírás</th>
+                <th>Összeg</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let expense of filteredExpenses">
+                <td>#{{ expense.id }}</td>
+                <td>{{ getUserNameById(expense.user_id) }}</td>
+                <td>{{ expense.date }}</td>
+                <td>{{ expense.description }}</td>
+                <td><strong>{{ expense.amount | number }} Ft</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ANALYTICS SECTION -->
+      <section *ngIf="activeSection === 'analytics'" class="content-section">
+        <div class="stats-row">
+          <div class="stat-box primary">
+            <div class="stat-box-icon">👥</div>
+            <div class="stat-box-info">
+              <span class="stat-box-value">{{ adminStats?.totalUsers ?? totalUsers }}</span>
+              <span class="stat-box-label">Felhasználó</span>
+            </div>
+          </div>
+          <div class="stat-box success">
+            <div class="stat-box-icon">💰</div>
+            <div class="stat-box-info">
+              <span class="stat-box-value">{{ (adminStats?.totalSpent ?? getTotalSpent()) | number }} Ft</span>
+              <span class="stat-box-label">Összes költés</span>
+            </div>
+          </div>
+          <div class="stat-box warning">
+            <div class="stat-box-icon">📝</div>
+            <div class="stat-box-info">
+              <span class="stat-box-value">{{ adminStats?.totalExpenses ?? allExpenses.length }}</span>
+              <span class="stat-box-label">Tranzakció</span>
+            </div>
+          </div>
+          <div class="stat-box info">
+            <div class="stat-box-icon">📊</div>
+            <div class="stat-box-info">
+              <span class="stat-box-value">{{ (adminStats?.averageSalary ?? 0) | number }} Ft</span>
+              <span class="stat-box-label">Átlagfizetés (backend)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dashboard-card wide">
+            <h3>📊 Felhasználók költései</h3>
+            <div class="chart-bars">
+              <div class="chart-bar-item" *ngFor="let user of getTopSpenders(10)">
+                <span class="chart-bar-label">{{ user.name }}</span>
+                <div class="chart-bar-track">
+                  <div class="chart-bar-fill" [style.width.%]="getExpensePercentage(user.expenses_sum_amount)"></div>
+                </div>
+                <span class="chart-bar-value">{{ user.expenses_sum_amount | number }} Ft</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS SECTION -->
+      <section *ngIf="activeSection === 'settings'" class="content-section">
+        <div class="settings-card">
+          <h3>🎨 Megjelenés</h3>
+          <div class="setting-row">
+            <span>Téma</span>
+            <button class="toggle-btn" [class.active]="isDarkTheme" (click)="toggleTheme()">
+              {{ isDarkTheme ? '🌙 Sötét' : '☀️ Világos' }}
+            </button>
+          </div>
+        </div>
+        <div class="settings-card">
+          <h3>📡 Szerver</h3>
+          <div class="setting-row">
+            <span>Státusz</span>
+            <span class="status-text" [class.online]="serverStatus === 'online'">{{ serverStatus }}</span>
+          </div>
+          <div class="setting-row">
+            <span>API végpont</span>
+            <code>{{ API_BASE }}</code>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- New User Modal -->
+  <div *ngIf="showNewUserForm" class="modal-overlay" (click)="showNewUserForm = false">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <h3>Új felhasználó létrehozása</h3>
+      <form (ngSubmit)="createUser()">
+        <div class="form-row">
+          <label>Felhasználónév *</label>
+          <input type="text" [(ngModel)]="newUser.username" name="username" required>
+        </div>
+        <div class="form-row">
+          <label>Jelszó *</label>
+          <input type="password" [(ngModel)]="newUser.password" name="password" required>
+        </div>
+        <div class="form-row">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="newUser.email" name="email">
+        </div>
+        <div class="form-row">
+          <label>Fizetés (Ft)</label>
+          <input type="number" [(ngModel)]="newUser.salary" name="salary" min="0">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="showNewUserForm = false">Mégse</button>
+          <button type="submit" class="btn-primary">Létrehoz</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div *ngIf="showEditForm" class="modal-overlay" (click)="showEditForm = false">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <h3>Felhasználó szerkesztése</h3>
+      <form (ngSubmit)="updateUser()">
+        <div class="form-row">
+          <label>ID</label>
+          <input type="text" [value]="editUserId" disabled>
+        </div>
+        <div class="form-row">
+          <label>Fizetés (Ft)</label>
+          <input type="number" [(ngModel)]="editUserSalary" name="salary" min="0">
+        </div>
+        <div class="form-row">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="editUserEmail" name="email">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="showEditForm = false">Mégse</button>
+          <button type="submit" class="btn-primary">Mentés</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- User Detail Modal -->
+  <div *ngIf="showUserDetail && selectedUser" class="modal-overlay" (click)="closeUserDetail()">
+    <div class="modal-panel wide" (click)="$event.stopPropagation()">
+      <div class="user-detail-header">
+        <h3>👤 {{ selectedUser.name }}</h3>
+        <span class="role-badge" [class.admin]="selectedUser.is_admin">{{ selectedUser.is_admin ? 'Admin' : 'User' }}</span>
+      </div>
+      <div class="user-detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">ID</span>
+          <span class="detail-value">#{{ selectedUser.id }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Email</span>
+          <span class="detail-value">{{ selectedUser.email }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Fizetés</span>
+          <span class="detail-value">{{ selectedUser.salary | number }} Ft</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Költések száma</span>
+          <span class="detail-value">{{ selectedUser.expenses_count }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Összesen költött</span>
+          <span class="detail-value">{{ selectedUser.expenses_sum_amount | number }} Ft</span>
+        </div>
+      </div>
+      <h4 *ngIf="selectedUserExpenses.length > 0">Költések</h4>
+      <div class="user-expenses-list" *ngIf="selectedUserExpenses.length > 0">
+        <div class="expense-item" *ngFor="let exp of selectedUserExpenses">
+          <span class="expense-date">{{ exp.date }}</span>
+          <span class="expense-desc">{{ exp.description }}</span>
+          <span class="expense-amount">{{ exp.amount | number }} Ft</span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="closeUserDetail()">Bezár</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+

@@ -18,7 +18,7 @@
 
     <div class="welcome-content">
         <div class="logo">💰</div>
-<h1>Tracky</h1>
+        <h1>Tracky</h1>
         <p class="subtitle">Kövesd nyomon költéseidet és tervezd meg a pénzügyeidet!</p>
         
         <div class="features">
@@ -40,6 +40,9 @@
             </div>
         </div>
         
-        <button (click)="goToLogin()" class="btn-start">Kezdjük! →</button>
+        <button *ngIf="!isLoggedIn" (click)="goToLogin()" class="btn-start">Kezdjük! →</button>
+        <button *ngIf="isLoggedIn" (click)="goToMain()" class="btn-start">Folytatás →</button>
+        <button *ngIf="isAdmin" (click)="goToAdmin()" class="btn-start admin-btn">🛡️ Admin panel megnyitása</button>
     </div>
 </div>
+

@@ -1,173 +1,96 @@
-<div class="admin-dashboard">
+<div class="user-dashboard">
 
-    <!-- Theme Selector -->
-    <div class="theme-selector">
-        <button (click)="toggleThemeSelector()" class="btn-theme">
-            🎨 Téma
-        </button>
-        <div *ngIf="showThemeSelector" class="theme-dropdown">
-            <div 
-                *ngFor="let theme of themes; let i = index" 
-                class="theme-option"
-                (click)="selectTheme(i)"
-            >
-                <span class="theme-color" [style.background]="theme.primaryColor"></span>
-                {{ theme.name }}
-            </div>
-        </div>
-    </div>
-
-  <!-- Server Status -->
-  <div class="status-bar">
-    <div class="server-status" [class.online]="serverStatus === 'online'" [class.offline]="serverStatus === 'offline'">
-      Szerver: {{ serverStatus === 'online' ? '🟢 Online' : '🔴 Offline' }}
-    </div>
-    <button (click)="loadRawData()" class="btn-raw" *ngIf="adminLoggedIn">Raw data</button>
-  </div>
-
-  <!-- Admin Login Form -->
-  <div *ngIf="!adminLoggedIn" class="login-section">
-    <div class="auth-card">
-      <h2>Admin bejelentkezés</h2>
-      <p class="login-subtitle">Adminisztrációs felület eléréséhez jelentkezz be</p>
-      <form (ngSubmit)="adminLogin()" #loginForm="ngForm">
-        <div class="form-group">
-          <label>Felhasználónév</label>
-          <input type="text" [(ngModel)]="adminUsername" name="adminUsername" required>
-        </div>
-        <div class="form-group">
-          <label>Jelszó</label>
-          <input type="password" [(ngModel)]="adminPassword" name="adminPassword" required>
-        </div>
-        <div *ngIf="loginError" class="error-message">{{ loginError }}</div>
-        <button type="submit" class="btn-primary">Bejelentkezés</button>
-      </form>
+  <!-- Theme Selector -->
+  <div class="theme-selector">
+    <button (click)="toggleThemeSelector()" class="btn-theme">
+      🎨 Téma
+    </button>
+    <div *ngIf="showThemeSelector" class="theme-dropdown">
+      <div
+        *ngFor="let theme of themes; let i = index"
+        class="theme-option"
+        (click)="selectTheme(i)"
+      >
+        <span class="theme-color" [style.background]="theme.primaryColor"></span>
+        {{ theme.name }}
+      </div>
     </div>
   </div>
 
-  <!-- Admin Section -->
-  <div *ngIf="adminLoggedIn">
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active">👥 Felhasználók</button>
-      <button class="tab-btn" (click)="showStats = true">📊 Statisztikák</button>
-      <button class="tab-btn" (click)="loadRawData(); showRaw = true">📄 Raw data</button>
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="header-left">
+      <h1>📊 Áttekintés</h1>
+      <p class="subtitle">{{ currentMonthName }}</p>
     </div>
-
-    <!-- New User Form -->
-    <div class="new-user-section">
-      <button class="btn-add-user" (click)="showNewUserForm = true">➕ Új felhasználó</button>
-    </div>
-
-    <!-- New User Form Modal -->
-    <div *ngIf="showNewUserForm" class="modal-overlay">
-      <div class="modal">
-        <h3>Új felhasználó létrehozása</h3>
-        <form (ngSubmit)="createUser()">
-          <div class="form-group">
-            <label>Felhasználónév</label>
-            <input type="text" [(ngModel)]="newUser.username" name="username" required>
-          </div>
-          <div class="form-group">
-            <label>Jelszó</label>
-            <input type="password" [(ngModel)]="newUser.password" name="password" required>
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" [(ngModel)]="newUser.email" name="email">
-          </div>
-          <div class="form-group">
-            <label>Fizetés (Ft)</label>
-            <input type="number" [(ngModel)]="newUser.salary" name="salary">
-          </div>
-          <div class="modal-buttons">
-            <button type="submit" class="btn-primary">Létrehoz</button>
-            <button type="button" (click)="showNewUserForm = false" class="btn-secondary">Mégse</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Users Table -->
-    <div class="users-table-section">
-      <h2>Felhasználók</h2>
-      <div *ngIf="allUsers.length === 0" class="no-data">
-        Nincs felhasználó
-      </div>
-      <table *ngIf="allUsers.length > 0" class="users-table">
-        <thead>
-          <tr>
-            <th>Felhasználónév</th>
-            <th>Fizetés</th>
-            <th>Költések száma</th>
-            <th>Költött összesen</th>
-            <th>Műveletek</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let user of allUsers">
-            <td>{{ user.name }}</td>
-            <td>{{ user.salary | number }} Ft</td>
-            <td>{{ user.expenses_count }}</td>
-            <td>{{ user.expenses_sum_amount | number }} Ft</td>
-            <td>
-              <button class="btn-small btn-edit" (click)="editUser(user)">Szerkeszt</button>
-              <button class="btn-small btn-delete" (click)="deleteUser(user.id)">Töröl</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Edit User Form -->
-    <div *ngIf="showEditForm" class="modal-overlay">
-      <div class="modal">
-        <h3>Felhasználó szerkesztése</h3>
-        <form (ngSubmit)="updateUser()">
-          <div class="form-group">
-            <label>ID</label>
-            <input type="text" [value]="editUserId" disabled>
-          </div>
-          <div class="form-group">
-            <label>Fizetés (Ft)</label>
-            <input type="number" [(ngModel)]="editUserSalary" name="salary">
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" [(ngModel)]="editUserEmail" name="email">
-          </div>
-          <div class="modal-buttons">
-            <button type="submit" class="btn-primary">Frissít</button>
-            <button type="button" (click)="showEditForm = false" class="btn-secondary">Mégse</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    <div *ngIf="showStats" class="stats-section">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <h3>👥 Total Users</h3>
-          <p class="big-number">{{ totalUsers }}</p>
-        </div>
-        <div class="stat-card">
-          <h3>💰 Avg Salary</h3>
-          <p>{{ getAverageSalary() | number }} Ft</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Raw Data -->
-    <div *ngIf="rawData" class="raw-data">
-      <h2>Raw data</h2>
-      <pre>{{ rawData | json }}</pre>
-    </div>
-
-    <!-- Current User -->
-    <div *ngIf="isLoggedIn" class="current-user">
-      <h3>Aktuális felhasználó fizetése: {{ loggedInUserSalary | number }} Ft</h3>
+    <div class="header-right">
+      <button class="btn-nav" (click)="goToMain()">📅 Naptár</button>
+      <button class="btn-nav" (click)="goToLogin()">⚙️ Beállítások</button>
+      <button *ngIf="isAdmin" class="btn-nav admin-btn" (click)="goToAdmin()">🛡️ Admin</button>
+      <button class="btn-nav btn-logout" (click)="logout()">🚪 Kijelentkezés</button>
     </div>
   </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <div class="stat-icon">💰</div>
+      <h3>Havi fizetés</h3>
+      <p class="big-number">{{ salary | number }} Ft</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📉</div>
+      <h3>Fix kiadások</h3>
+      <p class="big-number">{{ fixedDeductionsTotal | number }} Ft</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🛒</div>
+      <h3>Ebben a hónapban költött</h3>
+      <p class="big-number">{{ spentThisMonth | number }} Ft</p>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-icon">💵</div>
+      <h3>Maradék keret</h3>
+      <p class="big-number">{{ remainingBudget | number }} Ft</p>
+    </div>
+    <div class="stat-card warning" *ngIf="weeklyStatus.warning">
+      <div class="stat-icon">⚠️</div>
+      <h3>Heti figyelmeztetés</h3>
+      <p class="big-number">{{ weeklyStatus.message }}</p>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-icon">📅</div>
+      <h3>Napi keret</h3>
+      <p class="big-number">{{ dailyBudget | number }} Ft</p>
+      <small>{{ daysInMonth }} napból {{ daysInMonth - currentDay + 1 }} hátravan</small>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="notifications-section" *ngIf="todaysNotifications.length > 0">
+    <h2>🔔 Mai értesítések</h2>
+    <div class="notification-list">
+      <div class="notification-item" *ngFor="let n of todaysNotifications">
+        <span class="notification-name">{{ n.name }}</span>
+        <span class="notification-amount">{{ n.amount | number }} Ft</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="quick-actions">
+    <h2>Gyors műveletek</h2>
+    <div class="action-buttons">
+      <button class="action-btn" (click)="goToMain()">
+        <span class="action-icon">➕</span>
+        <span>Költés rögzítése</span>
+      </button>
+      <button class="action-btn" (click)="goToLogin()">
+        <span class="action-icon">⚙️</span>
+        <span>Beállítások módosítása</span>
+      </button>
+    </div>
+  </div>
+
 </div>
 
